@@ -182,7 +182,7 @@ class _ProductCardState extends State<ProductCard> {
             child: Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: IconButton(
@@ -206,7 +206,7 @@ class _ProductCardState extends State<ProductCard> {
             child: Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: IconButton(
@@ -242,7 +242,7 @@ class _ProductCardState extends State<ProductCard> {
                     shape: BoxShape.circle,
                     color: _currentIndex == index
                         ? Colors.white
-                        : Colors.white.withValues(alpha: 0.5),
+                        : Colors.white.withOpacity(0.5),
                   ),
                 ),
               ),
