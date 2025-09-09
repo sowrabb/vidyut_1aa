@@ -1,0 +1,12 @@
+{
+  "status": "init",
+  "executionArgs": {
+    "projectName": "vidyut",
+    "projectPath": "/Users/sourab/Downloads/vidyut",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-NRHQrEID5JHWaGf2aryi7ZR5L6x341yX8ekmvrQiExlXChQ1bmwYJsVJMGRCWQ4Gkv_ous3-40WG97746zw7EhAfpN88k1BwEwIgV5pCumBVenMFJ7OFYFvkBYuwZ5BoTsk"
+    }
+  }
+}
