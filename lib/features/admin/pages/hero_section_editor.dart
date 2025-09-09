@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/simple_image_service.dart';
 import '../models/hero_section.dart';
@@ -414,11 +412,8 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
 
   Future<void> _pickImageFromCamera() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 100, // We'll compress it ourselves
-      );
+      // Camera picker temporarily disabled for web deployment
+      final image = null;
       
       if (image != null) {
         if (kIsWeb) {
@@ -437,11 +432,8 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
 
   Future<void> _pickImageFromGallery() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 100, // We'll compress it ourselves
-      );
+      // Gallery picker temporarily disabled for web deployment
+      final image = null;
       
       if (image != null) {
         if (kIsWeb) {
@@ -460,10 +452,8 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
 
   Future<void> _pickImageFromFiles() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-      );
+      // File picker temporarily disabled for web deployment
+      final result = null;
       
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;

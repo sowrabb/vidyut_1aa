@@ -5,7 +5,6 @@ import 'layout/responsive_scaffold.dart';
 import 'app_state.dart';
 import '../features/sell/store/seller_store.dart';
 import '../features/admin/store/admin_store.dart';
-// import '../features/auth/auth_test_page.dart';
 
 class VidyutApp extends StatelessWidget {
   const VidyutApp({super.key});

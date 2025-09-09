@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../app/tokens.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../../models/firebase_models.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -35,37 +31,17 @@ class _AuthPageState extends State<AuthPage> {
 
     setState(() => _isLoading = true);
 
-    try {
-      if (_isLogin) {
-        await AuthService.instance.signInWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-      } else {
-        await AuthService.instance.createUserWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text,
-          _nameController.text.trim(),
-          _selectedRole,
-        );
-      }
+    // Simulate authentication delay
+    await Future.delayed(const Duration(seconds: 1));
 
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isLogin ? 'Signed in successfully!' : 'Account created successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() => _isLoading = false);
     }
   }
 

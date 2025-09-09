@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../../app/tokens.dart';
@@ -440,7 +439,7 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
   
   // Image upload
   File? _selectedImage;
-  final ImagePicker _picker = ImagePicker();
+  // Image picker temporarily disabled for web deployment
   bool _isUploadingImage = false;
 
   // Available options
@@ -483,12 +482,8 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
 
   Future<void> _pickImage() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 90,
-      );
+      // Image picker temporarily disabled for web deployment
+      final image = null;
       
       if (image != null) {
         setState(() {
@@ -540,12 +535,8 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
 
   Future<void> _takePhoto() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 90,
-      );
+      // Camera picker temporarily disabled for web deployment
+      final image = null;
       
       if (image != null) {
         setState(() {

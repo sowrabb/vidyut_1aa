@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../services/image_compression_service.dart';
 
 class OptimizedImage extends StatefulWidget {
   final String imagePath;
@@ -69,7 +68,8 @@ class _OptimizedImageState extends State<OptimizedImage> {
         final imageFile = File(widget.imagePath);
         if (await imageFile.exists()) {
           if (widget.enableCompression) {
-            _compressedImage = await ImageCompressionService.compressImage(imageFile);
+            // Image compression temporarily disabled for web deployment
+            _compressedImage = imageFile;
           } else {
             _compressedImage = imageFile;
           }

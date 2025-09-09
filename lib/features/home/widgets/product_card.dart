@@ -3,7 +3,6 @@ import 'package:ionicons/ionicons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../app/tokens.dart';
 import '../../../app/breakpoints.dart';
-import '../../../widgets/optimized_image.dart';
 
 class ProductCard extends StatefulWidget {
   final String productId;

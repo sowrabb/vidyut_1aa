@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ionicons/ionicons.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
 import 'store/seller_store.dart';
@@ -35,7 +34,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
   Map<String, dynamic> _customValues = {};
   List<MapEntry<String, String>> _simpleFields = [];
   final List<String> _images = <String>[]; // local paths or URLs
-  final ImagePicker _picker = ImagePicker();
+  // Image picker temporarily disabled for web deployment
 
   @override
   void initState() {
@@ -371,18 +370,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
         );
         return;
       }
-      final List<XFile> picked = await _picker.pickMultiImage();
-      if (picked.isEmpty) return;
-      final toAdd = picked.take(remaining).map((x) => x.path).toList();
-      if (!mounted) return;
-      setState(() {
-        _images.addAll(toAdd);
-      });
-      if (picked.length > remaining) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Only 5 images can be selected')),
-        );
-      }
+      // Image picker temporarily disabled for web deployment
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image picker will be available after Firebase setup')),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to pick images')),
@@ -398,12 +389,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
         );
         return;
       }
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-      if (photo == null) return;
-      if (!mounted) return;
-      setState(() {
-        _images.add(photo.path);
-      });
+      // Camera picker temporarily disabled for web deployment
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Camera will be available after Firebase setup')),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to capture image')),
