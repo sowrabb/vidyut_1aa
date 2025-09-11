@@ -23,7 +23,15 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
       - name: Build Flutter web (release)
-        run: flutter build web --release --base-href "/vidyutnidhi/"
+        run: |
+          set -o pipefail
+          flutter build web --release --base-href "/vidyutnidhi/" -v 2>&1 | tee build_logs.txt
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-build-logs
+          path: build_logs.txt
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
