@@ -23,6 +23,12 @@ jobs:
         with:
           flutter-version: '3.24.0'
 
+      - name: Doctor & enable web
+        run: |
+          flutter --version
+          flutter doctor -v
+          flutter config --enable-web
+
       - name: Flutter pub get
         run: flutter pub get
 
@@ -31,7 +37,16 @@ jobs:
         run: echo "BASE_HREF=/${GITHUB_REPOSITORY##*/}/" >> $GITHUB_OUTPUT
 
       - name: Build Flutter web (release)
-        run: flutter build web --release --base-href "${{ steps.basehref.outputs.BASE_HREF }}"
+        run: |
+          set -o pipefail
+          flutter build web --release --base-href "${{ steps.basehref.outputs.BASE_HREF }}" -v 2>&1 | tee build_logs.txt
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-build-logs
+          path: build_logs.txt
 
       - name: Add SPA fallback (copy index.html to 404.html)
         run: cp build/web/index.html build/web/404.html
