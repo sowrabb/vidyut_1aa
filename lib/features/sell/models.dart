@@ -2,6 +2,7 @@ enum FieldType { text, number, dropdown, boolean, date }
 
 // Enums
 enum ProductStatus { active, draft, archived }
+enum AdType { search, category, product }
 
 // Categories & Materials (already present; ensure exported)
 const kCategories = <String>[
@@ -146,6 +147,35 @@ class Lead {
     required this.status,
     this.about = '',
   });
+}
+
+// Ad Campaign model
+class AdCampaign {
+  final String id;
+  final AdType type;
+  final String term; // search term, category name, or product id
+  final int slot; // 1-3 for display order
+
+  AdCampaign({
+    required this.id,
+    required this.type,
+    required this.term,
+    required this.slot,
+  });
+
+  AdCampaign copyWith({
+    String? id,
+    AdType? type,
+    String? term,
+    int? slot,
+  }) {
+    return AdCampaign(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      term: term ?? this.term,
+      slot: slot ?? this.slot,
+    );
+  }
 }
 
 // Helpers

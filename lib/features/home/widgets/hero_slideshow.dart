@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/breakpoints.dart';
 import '../../../app/tokens.dart';
+import '../../../widgets/optimized_image_widget.dart';
 import '../../admin/store/admin_store.dart';
 import '../../admin/models/hero_section.dart';
 
@@ -27,14 +25,17 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
     _DefaultSlideData(
       'First time in India, largest Electricity platform',
       'B2B • D2C • C2C',
+      imageAssetPath: 'assets/banner/1.JPG',
     ),
     _DefaultSlideData(
       'Find the right components fast',
       'Search by brand, spec, materials',
+      imageAssetPath: 'assets/banner/2.webp',
     ),
     _DefaultSlideData(
       'Post RFQs & get quotes',
       'Verified sellers, transparent pricing',
+      imageAssetPath: 'assets/banner/3.jpg',
     ),
   ];
 
@@ -127,6 +128,9 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                 },
                 itemBuilder: (_, i) {
                   final hero = slides[i];
+                  final String? effectiveImagePath = (hero.imagePath != null && hero.imagePath!.isNotEmpty)
+                      ? hero.imagePath
+                      : _defaultAssetForIndex(i);
                   return Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1200),
@@ -146,7 +150,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                                     child: AspectRatio(
                                       aspectRatio: 4 / 3,
                                       child: _HeroImage(
-                                        imagePath: hero.imagePath,
+                                        imagePath: effectiveImagePath,
                                         isDesktop: true,
                                       ),
                                     ),
@@ -168,7 +172,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                                     child: AspectRatio(
                                       aspectRatio: 2 / 1,
                                       child: _HeroImage(
-                                        imagePath: hero.imagePath,
+                                        imagePath: effectiveImagePath,
                                         isDesktop: false,
                                       ),
                                     ),
@@ -316,7 +320,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                               Expanded(
                                 child: AspectRatio(
                                   aspectRatio: 4 / 3,
-                                  child: _buildPlaceholderImage(true),
+                                  child: _buildDefaultImage(slide.imageAssetPath, true),
                                 ),
                               ),
                             ],
@@ -337,7 +341,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                               // Less space for image
                               SizedBox(
                                 height: height * 0.3, // 30% of height for image
-                                child: _buildPlaceholderImage(false),
+                                child: _buildDefaultImage(slide.imageAssetPath, false),
                               ),
                             ],
                           ),
@@ -455,6 +459,22 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
           size: isDesktop ? 48 : 32,
           color: Colors.black54,
         ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultImage(String? assetPath, bool isDesktop) {
+    if (assetPath == null || assetPath.isEmpty) {
+      return _buildPlaceholderImage(isDesktop);
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.asset(
+        assetPath,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stack) => _buildPlaceholderImage(isDesktop),
       ),
     );
   }
@@ -601,55 +621,26 @@ class _HeroImage extends StatelessWidget {
   }
 
   Widget _buildImage() {
-    if (imagePath!.startsWith('web_storage://')) {
-      // For web storage, load from SharedPreferences
-      return FutureBuilder<String?>(
-        future: _loadWebImage(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.memory(
-                base64Decode(snapshot.data!),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildPlaceholder();
-                },
-              ),
-            );
-          } else {
-            return _buildPlaceholder();
-          }
-        },
+    if (imagePath != null && imagePath!.startsWith('assets/')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          imagePath!,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+        ),
       );
-    } else {
-      // For file system
-      if (File(imagePath!).existsSync()) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(imagePath!),
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return _buildPlaceholder();
-            },
-          ),
-        );
-      } else {
-        return _buildPlaceholder();
-      }
     }
+    return HeroImageWidget(
+      imagePath: imagePath,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      borderRadius: BorderRadius.circular(12),
+    );
   }
 
-  Future<String?> _loadWebImage() async {
-    try {
-      final fileName = imagePath!.replaceFirst('web_storage://', '');
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('hero_image_$fileName');
-    } catch (e) {
-      return null;
-    }
-  }
 
   Widget _buildPlaceholder() {
     return Center(
@@ -665,7 +656,20 @@ class _HeroImage extends StatelessWidget {
 class _DefaultSlideData {
   final String title;
   final String subtitle;
-  const _DefaultSlideData(this.title, this.subtitle);
+  final String? imageAssetPath;
+  const _DefaultSlideData(this.title, this.subtitle, {this.imageAssetPath});
+}
+
+String? _defaultAssetForIndex(int index) {
+  switch (index % 3) {
+    case 0:
+      return 'assets/banner/1.JPG';
+    case 1:
+      return 'assets/banner/2.webp';
+    case 2:
+    default:
+      return 'assets/banner/3.jpg';
+  }
 }
 
 class _DefaultSlideContent extends StatelessWidget {

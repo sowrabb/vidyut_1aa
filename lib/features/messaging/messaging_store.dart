@@ -1,17 +1,29 @@
 import 'package:flutter/material.dart';
 import 'models.dart';
+import '../../services/demo_data_service.dart';
 
 class MessagingStore extends ChangeNotifier {
-  final List<Conversation> _conversations = [];
+  final DemoDataService _demoDataService;
   String? _activeConversationId;
   ReplyDraft _replyDraft = const ReplyDraft();
 
-  MessagingStore() {
-    _seed();
+  MessagingStore(this._demoDataService) {
+    // Listen to demo data changes
+    _demoDataService.addListener(_onDemoDataChanged);
+  }
+
+  @override
+  void dispose() {
+    _demoDataService.removeListener(_onDemoDataChanged);
+    super.dispose();
+  }
+
+  void _onDemoDataChanged() {
+    notifyListeners();
   }
 
   List<Conversation> get conversations {
-    final list = [..._conversations];
+    final list = [..._demoDataService.allConversations];
     list.sort((a, b) {
       if (a.isPinned != b.isPinned) {
         return a.isPinned ? -1 : 1;
@@ -28,19 +40,33 @@ class MessagingStore extends ChangeNotifier {
   }
 
   String? get activeConversationId => _activeConversationId;
-  Conversation? get activeConversation =>
-      _conversations.firstWhere((c) => c.id == _activeConversationId,
-          orElse: () => _conversations.isNotEmpty
-              ? _conversations.first
-              : const Conversation(
-                  id: '',
-                  title: '',
-                  subtitle: '',
-                  isPinned: false,
-                  isSupport: false,
-                  messages: []));
+  Conversation? get activeConversation {
+    if (_activeConversationId == null || _activeConversationId!.isEmpty) {
+      return null;
+    }
+    return _demoDataService.getConversation(_activeConversationId!);
+  }
 
   ReplyDraft get replyDraft => _replyDraft;
+
+  // Unread count tracking
+  int get unreadCount {
+    int total = 0;
+    for (final conv in _demoDataService.allConversations) {
+      if (conv.id != _activeConversationId) {
+        // Count unread messages (messages not sent by me)
+        total += conv.messages.where((m) => m.senderType != MessageSenderType.me).length;
+      }
+    }
+    return total;
+  }
+
+  // Mark conversation as read (for future use)
+  void markConversationAsRead(String conversationId) {
+    // In a real app, this would update read status in the backend
+    // For now, we'll just notify listeners to refresh the UI
+    notifyListeners();
+  }
 
   void selectConversation(String conversationId) {
     _activeConversationId = conversationId;
@@ -59,12 +85,12 @@ class MessagingStore extends ChangeNotifier {
   }
 
   void sendMessage(String text, {List<Attachment> attachments = const []}) {
-    if (_activeConversationId == null) return;
-    final idx = _conversations.indexWhere((c) => c.id == _activeConversationId);
-    if (idx == -1) return;
-    final conv = _conversations[idx];
+    if (_activeConversationId == null || _activeConversationId!.isEmpty) return;
+    final conv = _demoDataService.getConversation(_activeConversationId!);
+    if (conv == null) return;
+    
     final msg = Message(
-      id: UniqueKey().toString(),
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: conv.id,
       senderType: MessageSenderType.me,
       senderName: 'Me',
@@ -72,11 +98,36 @@ class MessagingStore extends ChangeNotifier {
       sentAt: DateTime.now(),
       attachments: attachments,
       replyToMessageId: _replyDraft.messageId,
+      isSending: true,
     );
     final updated = conv.copyWith(messages: [...conv.messages, msg]);
-    _conversations[idx] = updated;
+    _demoDataService.updateConversation(updated);
     _replyDraft = const ReplyDraft();
-    notifyListeners();
+    
+    // Simulate message sending delay and mark as sent
+    Future.delayed(const Duration(milliseconds: 500), () {
+      final updatedConv = _demoDataService.getConversation(_activeConversationId!);
+      if (updatedConv != null) {
+        final msgIndex = updatedConv.messages.indexWhere((m) => m.id == msg.id);
+        if (msgIndex != -1) {
+          final sentMsg = Message(
+            id: msg.id,
+            conversationId: msg.conversationId,
+            senderType: msg.senderType,
+            senderName: msg.senderName,
+            text: msg.text,
+            sentAt: msg.sentAt,
+            attachments: msg.attachments,
+            replyToMessageId: msg.replyToMessageId,
+            isSending: false,
+          );
+          final updatedMessages = List<Message>.from(updatedConv.messages);
+          updatedMessages[msgIndex] = sentMsg;
+          final finalConv = updatedConv.copyWith(messages: updatedMessages);
+          _demoDataService.updateConversation(finalConv);
+        }
+      }
+    });
   }
 
   /// Create or select a conversation by id. If missing, it will be created.
@@ -86,9 +137,9 @@ class MessagingStore extends ChangeNotifier {
     String subtitle = '',
     bool isSupport = false,
   }) {
-    final existingIndex = _conversations.indexWhere((c) => c.id == id);
-    if (existingIndex == -1) {
-      _conversations.add(Conversation(
+    final existing = _demoDataService.getConversation(id);
+    if (existing == null) {
+      final newConversation = Conversation(
         id: id,
         title: title,
         subtitle: subtitle,
@@ -105,63 +156,12 @@ class MessagingStore extends ChangeNotifier {
               sentAt: DateTime.now(),
             ),
         ],
-      ));
+      );
+      _demoDataService.addConversation(newConversation);
     }
     _activeConversationId = id;
     _replyDraft = const ReplyDraft();
     notifyListeners();
   }
 
-  void _seed() {
-    final support = Conversation(
-      id: 'support',
-      title: 'Vidyut Support',
-      subtitle: 'We are here to help',
-      isPinned: true,
-      isSupport: true,
-      messages: [
-        Message(
-          id: 'm1',
-          conversationId: 'support',
-          senderType: MessageSenderType.support,
-          senderName: 'Support',
-          text: 'Hello! How can we assist you today?',
-          sentAt: DateTime.now().subtract(const Duration(minutes: 30)),
-        ),
-      ],
-    );
-
-    final chat1 = Conversation(
-      id: 'c1',
-      title: 'Acme Traders',
-      subtitle: 'B2B Partner',
-      isPinned: false,
-      isSupport: false,
-      messages: [
-        Message(
-          id: 'm2',
-          conversationId: 'c1',
-          senderType: MessageSenderType.other,
-          senderName: 'Anita',
-          text: 'Can you share the latest price list?',
-          sentAt: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
-        Message(
-          id: 'm3',
-          conversationId: 'c1',
-          senderType: MessageSenderType.me,
-          senderName: 'Me',
-          text: 'Sure, attaching here.',
-          sentAt:
-              DateTime.now().subtract(const Duration(hours: 1, minutes: 45)),
-          attachments: const [
-            Attachment(id: 'a1', name: 'price-list.pdf', type: 'pdf')
-          ],
-        ),
-      ],
-    );
-
-    _conversations.addAll([support, chat1]);
-    _activeConversationId = support.id;
-  }
 }

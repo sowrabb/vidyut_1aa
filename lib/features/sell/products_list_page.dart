@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import 'store/seller_store.dart';
+import '../../services/demo_data_service.dart';
 import 'models.dart';
 import 'product_form_page.dart';
 import 'product_detail_page.dart';
 import 'widgets/product_row.dart';
 import 'widgets/products_filters.dart';
+import '../../widgets/error_handling_widget.dart';
 
 class ProductsListPage extends StatefulWidget {
   const ProductsListPage({super.key});
@@ -26,7 +28,7 @@ class _ProductsListPageState extends State<ProductsListPage> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => SellerStore(),
+      create: (context) => SellerStore(context.read<DemoDataService>()),
       builder: (context, _) {
         final store = context.watch<SellerStore>();
         var list = store.products;
@@ -57,8 +59,69 @@ class _ProductsListPageState extends State<ProductsListPage> {
 
         return Scaffold(
           backgroundColor: AppColors.surface,
+          body: StateHandlingWidget(
+            isLoading: store.isLoading,
+            errorMessage: store.errorMessage,
+            isEmpty: list.isEmpty,
+            onRetry: () => store.clearError(),
+            emptyTitle: 'No products found',
+            emptySubtitle: 'Add your first product to get started',
+            emptyActionText: 'Add Product',
+            onEmptyAction: () async {
+              if (!store.canAddProduct()) {
+                await showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Product Limit Reached'),
+                    content: Text(
+                        'You have reached your product limit (${store.products.length}/${store.maxProducts}). Upgrade your plan to add more products.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close')),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).pushNamed('/subscription');
+                        },
+                        child: const Text('Upgrade Plan'),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+              final p = await Navigator.of(context).push<Product>(
+                  MaterialPageRoute(builder: (_) => const ProductFormPage()));
+              if (p != null) store.addProductWithErrorHandling(p);
+            },
+            child: _buildProductsList(context, store, list),
+          ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
+              if (!store.canAddProduct()) {
+                await showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Product Limit Reached'),
+                    content: Text(
+                        'You have reached your product limit (${store.products.length}/${store.maxProducts}). Upgrade your plan to add more products.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close')),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).pushNamed('/subscription');
+                        },
+                        child: const Text('Upgrade Plan'),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
               final p = await Navigator.of(context).push<Product>(
                   MaterialPageRoute(builder: (_) => const ProductFormPage()));
               if (p != null) store.addProduct(p);
@@ -68,16 +131,45 @@ class _ProductsListPageState extends State<ProductsListPage> {
             icon: const Icon(Icons.add),
             label: const Text('Add Product'),
           ),
-          body: SafeArea(
-            child: ContentClamp(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
+        );
+      },
+    );
+  }
+
+  Widget _buildProductsList(BuildContext context, SellerStore store, List<Product> list) {
+    return SafeArea(
+      child: ContentClamp(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
                   // Top bar: add / bulk actions (hidden on mobile, shown on web)
                   if (context.isDesktop || context.isTablet) ...[
                     ResponsiveRow(children: [
                       FilledButton.icon(
                           onPressed: () async {
+                            if (!store.canAddProduct()) {
+                              await showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text('Product Limit Reached'),
+                                  content: Text(
+                                      'You have reached your product limit (${store.products.length}/${store.maxProducts}). Upgrade your plan to add more products.'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Close')),
+                                    FilledButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        Navigator.of(context).pushNamed('/subscription');
+                                      },
+                                      child: const Text('Upgrade Plan'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
                             final p = await Navigator.of(context).push<Product>(
                                 MaterialPageRoute(
                                     builder: (_) => const ProductFormPage()));
@@ -150,10 +242,7 @@ class _ProductsListPageState extends State<ProductsListPage> {
                 ],
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
   }
 }
 

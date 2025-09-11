@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../app/tokens.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -151,14 +152,7 @@ class _LocationPickerState extends State<LocationPicker> {
                         ? 'Location not fetched'
                         : '${_area ?? 'Fetching area...'} • Lat: ${_lat!.toStringAsFixed(4)}, Lng: ${_lng!.toStringAsFixed(4)}')),
                 TextButton(
-                  onPressed: () {
-                    // TODO: integrate geolocator; demo fallback to Hyderabad
-                    setState(() {
-                      _lat = 17.3850;
-                      _lng = 78.4867;
-                    });
-                    _reverseGeocode(_lat!, _lng!);
-                  },
+                  onPressed: () => _getCurrentLocation(),
                   child: const Text('Use current location'),
                 ),
               ]),
@@ -247,6 +241,78 @@ class _LocationPickerState extends State<LocationPicker> {
       }
     } catch (_) {
       // ignore failure silently
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location services are disabled. Please enable them in settings.'),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location permissions are denied. Please grant permission to use auto-location.'),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permissions are permanently denied. Please enable them in app settings.'),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      if (mounted) {
+        setState(() {
+          _lat = position.latitude;
+          _lng = position.longitude;
+        });
+        await _reverseGeocode(_lat!, _lng!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to get current location: ${e.toString()}'),
+          ),
+        );
+        // Fallback to Hyderabad coordinates
+        setState(() {
+          _lat = 17.3850;
+          _lng = 78.4867;
+        });
+        await _reverseGeocode(_lat!, _lng!);
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
 import 'store/seller_store.dart';
+import 'models.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../features/admin/store/admin_store.dart';
 import 'ads_create_page.dart';
@@ -17,17 +18,24 @@ class AdsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Ads')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          if (store.ads.length >= 3) {
+          if (!store.canAddAd()) {
             await showDialog(
               context: context,
               builder: (_) => AlertDialog(
-                title: const Text('Limit reached'),
-                content: const Text(
-                    'You have 3 active campaigns. Pay ₹999/year to unlock more.'),
+                title: const Text('Ad Limit Reached'),
+                content: Text(
+                    'You have reached your ad limit (${store.ads.length}/${store.maxAds}). Upgrade your plan to create more ads.'),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Close')),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed('/subscription');
+                    },
+                    child: const Text('Upgrade Plan'),
+                  ),
                 ],
               ),
             );
@@ -60,7 +68,7 @@ class _AdsManager extends StatelessWidget {
       final isPhone = bc.maxWidth < AppBreaks.tablet;
       final children = [for (final ad in ads) _AdCard(ad: ad)];
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Create up to 3 campaigns',
+        Text('Create up to ${store.maxAds} campaigns (${store.ads.length}/${store.maxAds} used)',
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         if (isPhone)

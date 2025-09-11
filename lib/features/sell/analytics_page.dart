@@ -13,6 +13,51 @@ class AnalyticsPage extends StatelessWidget {
     final store = context.watch<SellerStore>();
     final t = Theme.of(context).textTheme;
 
+    // Check if analytics is available for current plan
+    if (!store.hasAnalytics) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        body: SafeArea(
+          child: ContentClamp(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.analytics_outlined,
+                  size: 64,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Analytics Not Available',
+                  style: t.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Analytics is available for Plus and Pro plans. Upgrade your plan to access detailed analytics.',
+                  style: t.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/subscription');
+                  },
+                  icon: const Icon(Icons.upgrade),
+                  label: const Text('Upgrade Plan'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(

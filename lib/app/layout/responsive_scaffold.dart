@@ -8,9 +8,12 @@ import '../../features/categories/categories_page.dart';
 import '../../features/messaging/messaging_pages.dart';
 import '../../features/messaging/messaging_store.dart';
 import '../../features/sell/sell_hub_page.dart';
+import '../../widgets/notification_badge.dart';
+import '../../services/demo_data_service.dart';
 import '../../features/stateinfo/state_info_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../breakpoints.dart';
+import '../../widgets/auto_hide_scaffold.dart';
 
 enum AppDest { home, search, messages, categories, sell, stateInfo, profile }
 
@@ -29,7 +32,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
         const HomePage(),
         const SearchPage(),
         ChangeNotifierProvider(
-          create: (_) => MessagingStore(),
+          create: (context) => MessagingStore(context.read<DemoDataService>()),
           child: const MessagingPage(),
         ),
         const CategoriesPage(),
@@ -103,7 +106,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               onDestinationSelected: (i) => setState(() => index = i),
               labelType: NavigationRailLabelType.all,
               backgroundColor: AppColors.surface,
-              destinations: const [
+              destinations: [
                 NavigationRailDestination(
                   icon: Icon(Ionicons.home_outline),
                   selectedIcon: Icon(Ionicons.home),
@@ -115,29 +118,43 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                   label: Text('Search'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Ionicons.chatbubble_ellipses_outline),
-                  selectedIcon: Icon(Ionicons.chatbubble_ellipses),
-                  label: Text('Messages'),
+                  icon: Consumer<MessagingStore>(
+                    builder: (context, messagingStore, child) {
+                      return NotificationBadge(
+                        count: messagingStore.unreadCount,
+                        child: const Icon(Ionicons.chatbubble_ellipses_outline),
+                      );
+                    },
+                  ),
+                  selectedIcon: Consumer<MessagingStore>(
+                    builder: (context, messagingStore, child) {
+                      return NotificationBadge(
+                        count: messagingStore.unreadCount,
+                        child: const Icon(Ionicons.chatbubble_ellipses),
+                      );
+                    },
+                  ),
+                  label: const Text('Messages'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Ionicons.grid_outline),
-                  selectedIcon: Icon(Ionicons.grid),
-                  label: Text('Categories'),
+                  icon: const Icon(Ionicons.grid_outline),
+                  selectedIcon: const Icon(Ionicons.grid),
+                  label: const Text('Categories'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Ionicons.storefront_outline),
-                  selectedIcon: Icon(Ionicons.storefront),
-                  label: Text('Sell'),
+                  icon: const Icon(Ionicons.storefront_outline),
+                  selectedIcon: const Icon(Ionicons.storefront),
+                  label: const Text('Sell'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Ionicons.earth_outline),
-                  selectedIcon: Icon(Ionicons.earth),
-                  label: Text('State info'),
+                  icon: const Icon(Ionicons.earth_outline),
+                  selectedIcon: const Icon(Ionicons.earth),
+                  label: const Text('State info'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Ionicons.person_circle_outline),
-                  selectedIcon: Icon(Ionicons.person_circle),
-                  label: Text('Profile'),
+                  icon: const Icon(Ionicons.person_circle_outline),
+                  selectedIcon: const Icon(Ionicons.person_circle),
+                  label: const Text('Profile'),
                 ),
               ],
             ),
@@ -150,7 +167,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
     // Mobile/tablet
     final selectedPos = indexMap.indexOf(index);
-    return Scaffold(
+    return AutoHideScaffold(
       backgroundColor: AppColors.surface,
       body: _pages[index],
       bottomNavigationBar: NavigationBar(

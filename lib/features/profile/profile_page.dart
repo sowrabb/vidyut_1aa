@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../app/layout/adaptive.dart';
 import 'package:ionicons/ionicons.dart';
 import '../messaging/messaging_pages.dart';
+import '../messaging/messaging_store.dart';
 import '../../app/tokens.dart';
+import '../../widgets/notification_badge.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -30,15 +33,22 @@ class ProfilePage extends StatelessWidget {
             _SettingsTab(),
           ]),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MessagingPage()),
+        floatingActionButton: Consumer<MessagingStore>(
+          builder: (context, messagingStore, child) {
+            return NotificationBadge(
+              count: messagingStore.unreadCount,
+              child: FloatingActionButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const MessagingPage()),
+                  );
+                },
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                child: const Icon(Ionicons.chatbubble_ellipses_outline),
+              ),
             );
           },
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          child: const Icon(Ionicons.chatbubble_ellipses_outline),
         ),
       ),
     );
@@ -151,19 +161,26 @@ class _MessagesShortcutCard extends StatelessWidget {
           ],
         ),
         padding: const EdgeInsets.all(16),
-        child: Row(
-          children: const [
-            Icon(Ionicons.chatbubble_ellipses_outline, color: Colors.white),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Messages',
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
-            ),
-            Icon(Ionicons.arrow_forward, color: Colors.white),
-          ],
+        child: Consumer<MessagingStore>(
+          builder: (context, messagingStore, child) {
+            return Row(
+              children: [
+                NotificationBadge(
+                  count: messagingStore.unreadCount,
+                  child: const Icon(Ionicons.chatbubble_ellipses_outline, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Messages',
+                    style:
+                        TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const Icon(Ionicons.arrow_forward, color: Colors.white),
+              ],
+            );
+          },
         ),
       ),
     );

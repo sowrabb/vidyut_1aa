@@ -1,84 +1,53 @@
 import 'package:flutter/foundation.dart';
 import 'categories_page.dart';
+import '../../app/app_state.dart';
+import '../../services/demo_data_service.dart';
 
 class CategoriesStore extends ChangeNotifier {
+  final AppState _appState;
+  final DemoDataService _demoDataService;
   String query = '';
   final Set<String> selectedIndustries = {};
   final Set<String> selectedMaterials = {};
   CategorySortBy sortBy = CategorySortBy.name;
+  
+  // Location properties that delegate to AppState
+  String get city => _appState.city;
+  String get state => _appState.state;
+  double get radiusKm => _appState.radiusKm;
 
-  // All categories data
-  final List<CategoryData> _allCategories = [
-    CategoryData(
-      name: 'Cables & Wires',
-      imageUrl: 'https://picsum.photos/seed/cables/400/300',
-      productCount: 1250,
-      industries: ['Construction', 'EPC', 'MEP', 'Industrial'],
-      materials: ['Copper', 'Aluminium', 'PVC', 'XLPE'],
-    ),
-    CategoryData(
-      name: 'Switchgear',
-      imageUrl: 'https://picsum.photos/seed/switchgear/400/300',
-      productCount: 890,
-      industries: ['Industrial', 'Commercial', 'Infrastructure'],
-      materials: ['Steel', 'Iron', 'Plastic'],
-    ),
-    CategoryData(
-      name: 'Transformers',
-      imageUrl: 'https://picsum.photos/seed/transformers/400/300',
-      productCount: 450,
-      industries: ['Industrial', 'Infrastructure', 'EPC'],
-      materials: ['Steel', 'Iron', 'Copper'],
-    ),
-    CategoryData(
-      name: 'Meters',
-      imageUrl: 'https://picsum.photos/seed/meters/400/300',
-      productCount: 320,
-      industries: ['Commercial', 'Residential', 'Industrial'],
-      materials: ['Plastic', 'Steel', 'Glass'],
-    ),
-    CategoryData(
-      name: 'Solar & Storage',
-      imageUrl: 'https://picsum.photos/seed/solar/400/300',
-      productCount: 680,
-      industries: ['Solar', 'EPC', 'Commercial'],
-      materials: ['Steel', 'Aluminium', 'Glass'],
-    ),
-    CategoryData(
-      name: 'Lighting',
-      imageUrl: 'https://picsum.photos/seed/lighting/400/300',
-      productCount: 2100,
-      industries: ['Commercial', 'Residential', 'Infrastructure'],
-      materials: ['Plastic', 'Aluminium', 'Glass'],
-    ),
-    CategoryData(
-      name: 'Motors & Drives',
-      imageUrl: 'https://picsum.photos/seed/motors/400/300',
-      productCount: 750,
-      industries: ['Industrial', 'Commercial'],
-      materials: ['Steel', 'Iron', 'Copper'],
-    ),
-    CategoryData(
-      name: 'Tools & Safety',
-      imageUrl: 'https://picsum.photos/seed/tools/400/300',
-      productCount: 1800,
-      industries: ['Construction', 'Industrial', 'Commercial'],
-      materials: ['Steel', 'Rubber', 'Plastic'],
-    ),
-    CategoryData(
-      name: 'Services',
-      imageUrl: 'https://picsum.photos/seed/services/400/300',
-      productCount: 150,
-      industries: ['Construction', 'EPC', 'MEP'],
-      materials: [],
-    ),
-  ];
+  // Categories data from DemoDataService
+  List<CategoryData> get _allCategories => _demoDataService.allCategories;
 
   List<CategoryData> _filteredCategories = [];
   List<CategoryData> get filteredCategories => _filteredCategories;
+  
+  late final VoidCallback _locationChangeListener;
+  late final VoidCallback _demoDataChangeListener;
 
-  CategoriesStore() {
+  CategoriesStore(this._appState, this._demoDataService) {
     _filteredCategories = List.of(_allCategories);
+    _applyFilters();
+    
+    // Listen to location changes from AppState
+    _locationChangeListener = () => _refreshCategories();
+    _appState.addLocationChangeListener(_locationChangeListener);
+    
+    // Listen to demo data changes from DemoDataService
+    _demoDataChangeListener = () => _refreshCategories();
+    _demoDataService.addListener(_demoDataChangeListener);
+  }
+  
+  @override
+  void dispose() {
+    _appState.removeLocationChangeListener(_locationChangeListener);
+    _demoDataService.removeListener(_demoDataChangeListener);
+    super.dispose();
+  }
+  
+  void _refreshCategories() {
+    // Categories can be filtered based on location in the future
+    // For now, just trigger a refresh
     _applyFilters();
   }
 

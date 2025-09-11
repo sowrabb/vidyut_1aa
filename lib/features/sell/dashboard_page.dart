@@ -4,6 +4,7 @@ import 'package:ionicons/ionicons.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
 import 'store/seller_store.dart';
+import 'models.dart';
 import 'widgets/kpi_card.dart';
 
 class DashboardPage extends StatelessWidget {

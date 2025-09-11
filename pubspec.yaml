@@ -31,17 +31,30 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # Core dependencies
   cupertino_icons: ^1.0.2
+  provider: ^6.1.2
+  
+  # UI dependencies
   ionicons: ^0.2.2
   google_fonts: ^6.2.1
+  
+  # Functionality dependencies
   url_launcher: ^6.3.0
-  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  
+  # Location and mapping (used in profile settings)
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
+  geolocator: ^10.1.0
   http: ^1.2.2
-  shared_preferences: ^2.2.3
+  
+  # Image handling (minimal usage)
+  extended_image: ^8.0.0
+  image_picker: ^1.0.7
+  file_picker: ^6.1.1
+  path_provider: ^2.1.2
+  flutter_image_compress: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -65,19 +78,23 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
+  # Optimized assets - only include what's actually used
   assets:
     - assets/logo.png
-    - assets/demo-images/wires-cables/
-    - assets/demo-images/circuit-breakers/
-    - assets/demo-images/lights/
-    - assets/demo-images/motors/
-    - assets/demo-images/tools/
-    - assets/demo-images/switches/
-    - assets/demo-images/safety/
-    - assets/demo-images/panels/
-    - assets/demo-images/conduits/
-    - assets/demo-images/transformer/
+    - assets/banner/
+    - assets/demo-images/wires-cables/wire01.jpeg
+    - assets/demo-images/wires-cables/wire02.jpeg
+    - assets/demo-images/wires-cables/wire03.jpeg
+    - assets/demo-images/wires-cables/wire04.jpeg
+    - assets/demo-images/wires-cables/wire05.jpeg
+    - assets/demo-images/wires-cables/wire06.jpeg
+    - assets/demo-images/wires-cables/wire07.jpeg
+    - assets/demo-images/wires-cables/wire08.jpeg
+    - assets/demo-images/wires-cables/wire09.jpeg
+    - assets/demo-images/circuit-breakers/breaker01.jpeg
+    - assets/demo-images/lights/light01.jpeg
+    - assets/demo-images/motors/motor01.jpeg
+    - assets/demo-images/tools/tool01.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

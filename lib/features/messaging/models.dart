@@ -19,6 +19,7 @@ class Message {
   final DateTime sentAt;
   final List<Attachment> attachments;
   final String? replyToMessageId;
+  final bool isSending;
 
   const Message({
     required this.id,
@@ -29,6 +30,7 @@ class Message {
     required this.sentAt,
     this.attachments = const [],
     this.replyToMessageId,
+    this.isSending = false,
   });
 }
 

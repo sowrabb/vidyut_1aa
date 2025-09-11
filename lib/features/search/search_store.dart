@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../sell/models.dart';
+import '../../app/app_state.dart';
 
 enum SearchMode { products, profiles }
 
@@ -14,6 +15,7 @@ enum SortBy { relevance, priceAsc, priceDesc, distance }
 
 class SearchStore extends ChangeNotifier {
   final List<Product> _all;
+  final AppState _appState;
   String query = '';
   final Set<String> selectedCategories = {};
   final Set<String> selectedMaterials = {};
@@ -21,11 +23,6 @@ class SearchStore extends ChangeNotifier {
   double priceStart = 0, priceEnd = 50000;
   SortBy sortBy = SortBy.relevance;
   SearchMode mode = SearchMode.products;
-
-  // Simulated geo context
-  String city = 'Hyderabad';
-  String state = 'Telangana';
-  double radiusKm = 25;
 
   List<Product> _results = [];
   List<Product> get results => _results;
@@ -35,8 +32,15 @@ class SearchStore extends ChangeNotifier {
   List<MaterialProfile> get profilesResults => _profilesResults;
 
   Timer? _debounce;
+  
+  // Location properties that delegate to AppState
+  String get city => _appState.city;
+  String get state => _appState.state;
+  double get radiusKm => _appState.radiusKm;
+  
+  late final VoidCallback _locationChangeListener;
 
-  SearchStore(this._all) {
+  SearchStore(this._all, this._appState) {
     _results = List.of(_all);
     // Aggregate simple "profiles" by brand name with union of materials
     final Map<String, Set<String>> byBrand = {};
@@ -47,13 +51,21 @@ class SearchStore extends ChangeNotifier {
         .map((e) => MaterialProfile(name: e.key, materials: e.value.toList()))
         .toList();
     _profilesResults = List.of(_profilesAll);
+    
+    // Listen to location changes from AppState
+    _locationChangeListener = () => _refresh(immediate: true);
+    _appState.addLocationChangeListener(_locationChangeListener);
+  }
+  
+  @override
+  void dispose() {
+    _appState.removeLocationChangeListener(_locationChangeListener);
+    _debounce?.cancel();
+    super.dispose();
   }
 
-  void setGeo(
-      {required String city, required String state, required double radiusKm}) {
-    this.city = city;
-    this.state = state;
-    this.radiusKm = radiusKm;
+  // Location is now managed by AppState - use AppState.setLocation() instead
+  void updateLocationFromAppState() {
     _refresh(immediate: true);
   }
 

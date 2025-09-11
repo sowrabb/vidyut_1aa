@@ -4,11 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hero_section.dart';
 import '../models/notification.dart' as notif;
 import '../models/subscription_models.dart' as sub;
+import '../models/state_flow_admin_models.dart';
+import '../../../services/demo_data_service.dart';
+import '../../categories/categories_page.dart';
+import '../../messaging/models.dart';
+import '../../stateinfo/models/state_info_models.dart';
 
 class AdminStore extends ChangeNotifier {
+  final DemoDataService _demoDataService;
   bool _isInitialized = false;
   
-  AdminStore() {
+  AdminStore(this._demoDataService) {
     _initialize();
   }
   
@@ -20,62 +26,11 @@ class AdminStore extends ChangeNotifier {
   
   bool get isInitialized => _isInitialized;
 
-  // Hero sections data
-  final List<HeroSection> _heroSections = [
-    HeroSection(
-      id: 'hero_1',
-      title: 'First time in India, largest Electricity platform',
-      subtitle: 'B2B • D2C • C2C',
-      ctaText: null, // No CTA for first card
-      ctaUrl: null,
-      priority: 1,
-      isActive: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 30)),
-    ),
-    HeroSection(
-      id: 'hero_2',
-      title: 'Find the right components fast',
-      subtitle: 'Search by brand, spec, materials',
-      ctaText: 'Start Searching',
-      ctaUrl: '/search',
-      priority: 2,
-      isActive: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 25)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 25)),
-    ),
-    HeroSection(
-      id: 'hero_3',
-      title: 'Post RFQs & get quotes',
-      subtitle: 'Verified sellers, transparent pricing',
-      ctaText: 'Post RFQ',
-      ctaUrl: '/rfq',
-      priority: 3,
-      isActive: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 20)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 20)),
-    ),
-  ];
+  // Hero sections data - delegate to DemoDataService
+  List<HeroSection> get heroSections => _demoDataService.heroSections;
 
-  // Demo users data
-  final List<AdminUser> _allUsers = List.generate(30, (i) => AdminUser(
-        id: 'U${1000 + i}',
-        name: i % 3 == 0 ? 'John Doe' : i % 3 == 1 ? 'Aarti' : 'Rahul',
-        email: 'user${i}@example.com',
-        role: i % 5 == 0 ? 'admin' : 'seller',
-        status: i % 4 == 0 ? 'suspended' : i % 3 == 0 ? 'pending' : 'active',
-        createdAt: DateTime.now().subtract(Duration(days: 30 - i)),
-        isSeller: i % 2 == 0,
-        plan: i % 6 == 0 ? 'pro' : i % 3 == 0 ? 'plus' : 'free',
-        sellerProfile: i % 2 == 0
-            ? const SellerProfile(
-                legalName: 'Demo Co.',
-                phone: '+91-9999999999',
-                address: 'Somewhere, India',
-                materials: ['Copper', 'PVC'],
-              )
-            : null,
-      ));
+  // Demo users data - delegate to DemoDataService
+  List<AdminUser> get allUsers => _demoDataService.allUsers;
 
   // Feature flags (demo, in-memory)
   final Map<String, bool> _featureFlags = {
@@ -215,7 +170,6 @@ class AdminStore extends ChangeNotifier {
   }
   Future<void> reindexSearch() async { await addAudit('dev', 'Triggered search reindex'); }
 
-  List<AdminUser> get allUsers => List.unmodifiable(_allUsers);
   Map<String, bool> get featureFlags => Map.unmodifiable(_featureFlags);
   List<AuditLog> get auditLogs => List.unmodifiable(_auditLogs.reversed);
   int get auditRetentionDays => _auditRetentionDays;
@@ -243,12 +197,11 @@ class AdminStore extends ChangeNotifier {
     await _persistSlideDurations();
   }
 
-  // Hero sections getters
-  List<HeroSection> get heroSections => List.unmodifiable(_heroSections);
-  List<HeroSection> get activeHeroSections => _heroSections
+  // Hero sections getters - delegate to DemoDataService
+  List<HeroSection> get activeHeroSections => heroSections
       .where((h) => h.isActive)
       .toList()
-    ..sort((a, b) => a.priority.compareTo(b.priority));
+      ..sort((a, b) => a.priority.compareTo(b.priority));
 
   String exportAuditCsv() {
     final header = 'timestamp,area,message';
@@ -260,26 +213,23 @@ class AdminStore extends ChangeNotifier {
     return '$header\n$rows';
   }
 
-  // CRUD: Users (demo)
+  // CRUD: Users (demo) - delegate to DemoDataService
   Future<void> addUser(AdminUser user) async {
-    _allUsers.add(user);
+    _demoDataService.addUser(user);
     await addAudit('users', 'Added user ${user.id} (${user.email})');
-    notifyListeners();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> updateUser(AdminUser updated) async {
-    final idx = _allUsers.indexWhere((u) => u.id == updated.id);
-    if (idx != -1) {
-      _allUsers[idx] = updated;
-      await addAudit('users', 'Updated user ${updated.id}');
-      notifyListeners();
-    }
+    _demoDataService.updateUser(updated);
+    await addAudit('users', 'Updated user ${updated.id}');
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> deleteUser(String id) async {
-    _allUsers.removeWhere((u) => u.id == id);
+    _demoDataService.removeUser(id);
     await addAudit('users', 'Deleted user $id');
-    notifyListeners();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> resetPassword(String id) async {
@@ -287,26 +237,22 @@ class AdminStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Role/plan helpers
+  // Role/plan helpers - delegate to DemoDataService
   Future<void> promoteToSeller(String id, {String plan = 'free'}) async {
-    final idx = _allUsers.indexWhere((u) => u.id == id);
-    if (idx == -1) return;
-    final u = _allUsers[idx];
+    final u = allUsers.firstWhere((user) => user.id == id);
     final updated = u.copyWith(
       role: 'seller',
       isSeller: true,
       plan: plan,
       sellerProfile: u.sellerProfile ?? const SellerProfile(),
     );
-    _allUsers[idx] = updated;
+    _demoDataService.updateUser(updated);
     await addAudit('users', 'Promoted $id to seller (plan=$plan)');
-    notifyListeners();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> demoteToBuyer(String id) async {
-    final idx = _allUsers.indexWhere((u) => u.id == id);
-    if (idx == -1) return;
-    final u = _allUsers[idx];
+    final u = allUsers.firstWhere((user) => user.id == id);
     final updated = u.copyWith(
       role: 'buyer',
       isSeller: false,
@@ -314,9 +260,9 @@ class AdminStore extends ChangeNotifier {
       sellerProfile: null,
       status: u.status,
     );
-    _allUsers[idx] = updated;
+    _demoDataService.updateUser(updated);
     await addAudit('users', 'Demoted $id to buyer');
-    notifyListeners();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<AdminUser> createSeller({
@@ -337,18 +283,18 @@ class AdminStore extends ChangeNotifier {
       plan: plan,
       sellerProfile: profile ?? const SellerProfile(),
     );
-    _allUsers.add(user);
+    _demoDataService.addUser(user);
     await addAudit('users', 'Created seller $id (plan=$plan)');
-    notifyListeners();
+    // DemoDataService will notify listeners automatically
     return user;
   }
 
   Future<void> grantPlan(String id, String plan) async {
-    final idx = _allUsers.indexWhere((u) => u.id == id);
-    if (idx == -1) return;
-    _allUsers[idx] = _allUsers[idx].copyWith(plan: plan);
+    final user = allUsers.firstWhere((u) => u.id == id);
+    final updated = user.copyWith(plan: plan);
+    _demoDataService.updateUser(updated);
     await addAudit('billing', 'Granted plan $plan to $id');
-    notifyListeners();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> refund(String id, {required double amount, String? reason}) async {
@@ -380,10 +326,11 @@ class AdminStore extends ChangeNotifier {
   }
 
   Future<void> bulkUpdateUsersStatus(Iterable<String> userIds, String status) async {
-    for (final id in userIds) {
-      final idx = _allUsers.indexWhere((u) => u.id == id);
-      if (idx != -1) {
-        _allUsers[idx] = _allUsers[idx].copyWith(status: status);
+    for (final userId in userIds) {
+      final user = _demoDataService.getUser(userId);
+      if (user != null) {
+        final updatedUser = user.copyWith(status: status);
+        _demoDataService.updateUser(updatedUser);
       }
     }
     await addAudit('users', 'Bulk updated ${userIds.length} users to $status');
@@ -391,22 +338,29 @@ class AdminStore extends ChangeNotifier {
   }
 
   void exportUsersCsv(void Function(String csv) onReady) {
-    final header = 'id,name,email,role,status,createdAt,plan,isSeller';
-    final rows = _allUsers
-        .map((u) => [
-              u.id,
-              u.name,
-              u.email,
-              u.role,
-              u.status,
-              u.createdAt.toIso8601String(),
-              u.plan,
-              u.isSeller.toString(),
-            ].join(','))
-        .join('\n');
-    final csv = '$header\n$rows';
+    final users = _demoDataService.allUsers;
+    final header = 'id,name,email,role,status,createdAt,plan,isSeller,legalName,gstin,address,materials';
+    final rows = users.map((user) {
+      final sellerProfile = user.sellerProfile;
+      return [
+        user.id,
+        user.name,
+        user.email,
+        user.role,
+        user.status,
+        user.createdAt.toIso8601String(),
+        user.plan,
+        user.isSeller.toString(),
+        sellerProfile?.legalName ?? '',
+        sellerProfile?.gstin ?? '',
+        sellerProfile?.address ?? '',
+        sellerProfile?.materials.join(';') ?? '',
+      ].map((field) => '"${field.toString().replaceAll('"', '""')}"').join(',');
+    }).toList();
+    
+    final csv = [header, ...rows].join('\n');
     onReady(csv);
-    addAudit('users', 'Exported users CSV (${_allUsers.length})');
+    addAudit('users', 'Exported users CSV (${users.length})');
   }
 
   Future<void> _hydrate() async {
@@ -496,6 +450,9 @@ class AdminStore extends ChangeNotifier {
     
     // Load categories
     await _loadCategories();
+    
+    // Load state flow data
+    await _loadStateFlowData();
 
     // Notifications: templates & drafts
     try {
@@ -662,6 +619,17 @@ class AdminStore extends ChangeNotifier {
   // Categories CRUD operations
   Future<void> addCategory(AdminCategoryData category) async {
     _categories.add(category);
+    
+    // Sync with DemoDataService
+    final frontendCategory = CategoryData(
+      name: category.name,
+      imageUrl: category.imageUrl,
+      productCount: category.productCount,
+      industries: category.industries,
+      materials: category.materials,
+    );
+    _demoDataService.addCategory(frontendCategory);
+    
     await addAudit('categories', 'Added category: ${category.name}');
     notifyListeners();
     await _persistCategories();
@@ -671,6 +639,17 @@ class AdminStore extends ChangeNotifier {
     final idx = _categories.indexWhere((c) => c.id == updated.id);
     if (idx != -1) {
       _categories[idx] = updated.copyWith(updatedAt: DateTime.now());
+      
+      // Sync with DemoDataService
+      final frontendCategory = CategoryData(
+        name: updated.name,
+        imageUrl: updated.imageUrl,
+        productCount: updated.productCount,
+        industries: updated.industries,
+        materials: updated.materials,
+      );
+      _demoDataService.updateCategory(frontendCategory);
+      
       await addAudit('categories', 'Updated category: ${updated.name}');
       notifyListeners();
       await _persistCategories();
@@ -680,6 +659,10 @@ class AdminStore extends ChangeNotifier {
   Future<void> deleteCategory(String id) async {
     final category = _categories.firstWhere((c) => c.id == id);
     _categories.removeWhere((c) => c.id == id);
+    
+    // Sync with DemoDataService
+    _demoDataService.removeCategory(category.name);
+    
     await addAudit('categories', 'Deleted category: ${category.name}');
     notifyListeners();
     await _persistCategories();
@@ -807,36 +790,92 @@ class AdminStore extends ChangeNotifier {
 
   // Estimate audience size for current filters
   int estimateAudienceSize(notif.AudienceFilter filter) {
-    Iterable<AdminUser> users = _allUsers;
-    if (filter.roles.isNotEmpty) {
-      users = users.where((u) => filter.roles.contains(u.role));
-    }
-    if (filter.isSeller != null) {
-      users = users.where((u) => u.isSeller == filter.isSeller);
-    }
-    if (filter.userIds.isNotEmpty) {
-      final ids = filter.userIds;
-      users = users.where((u) => ids.contains(u.id));
-    }
-    // states filtering requires mapping users to states; demo: random simulate via email hash
-    if (filter.states.isNotEmpty) {
-      users = users.where((u) => filter.states.contains(_pseudoUserState(u)));
-    }
-    return users.length;
+    // TODO: Implement user audience estimation via DemoDataService
+    return 0; // Placeholder
   }
 
   String _pseudoUserState(AdminUser u) {
-    final states = geo.keys.toList();
-    if (states.isEmpty) return 'Unknown';
-    final idx = (u.email.hashCode.abs()) % states.length;
-    return states[idx];
+    // TODO: Implement user state mapping via DemoDataService
+    return 'Unknown'; // Placeholder
   }
 
   Future<void> sendNotification(notif.NotificationDraft draft) async {
     final size = estimateAudienceSize(draft.audience);
-    await addAudit('notifications', 'Queued send for draft ${draft.id} to ~$size users via ${draft.channels.map((e)=>e.name).join('/')}');
-    // Demo: no actual sending; assume success
+    
+    // Create conversations for in-app notifications
+    if (draft.channels.contains(notif.NotificationChannel.inApp)) {
+      await _createInAppNotifications(draft);
+    }
+    
+    // For other channels (email, SMS, push), we would integrate with external services
+    // For now, we'll just log them
+    if (draft.channels.contains(notif.NotificationChannel.email)) {
+      await addAudit('notifications', 'Email notification queued for ${draft.id}');
+    }
+    if (draft.channels.contains(notif.NotificationChannel.sms)) {
+      await addAudit('notifications', 'SMS notification queued for ${draft.id}');
+    }
+    if (draft.channels.contains(notif.NotificationChannel.push)) {
+      await addAudit('notifications', 'Push notification queued for ${draft.id}');
+    }
+    
+    await addAudit('notifications', 'Sent notification ${draft.id} to ~$size users via ${draft.channels.map((e)=>e.name).join('/')}');
     notifyListeners();
+  }
+
+  Future<void> _createInAppNotifications(notif.NotificationDraft draft) async {
+    // Get target users based on audience filter
+    final targetUsers = _getTargetUsers(draft.audience);
+    
+    // Create a conversation for each target user
+    for (final user in targetUsers) {
+      final conversationId = 'notif_${draft.id}_${user.id}';
+      final messageText = '${draft.templates[notif.NotificationChannel.inApp]?.title ?? 'Notification'}\n\n${draft.templates[notif.NotificationChannel.inApp]?.body ?? ''}';
+      
+      final conversation = Conversation(
+        id: conversationId,
+        title: 'System Notification',
+        subtitle: messageText.length > 50 ? '${messageText.substring(0, 50)}...' : messageText,
+        isPinned: false,
+        isSupport: false,
+        messages: [
+          Message(
+            id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+            conversationId: conversationId,
+            senderType: MessageSenderType.support, // Use support as closest to system
+            senderName: 'System',
+            text: messageText,
+            sentAt: DateTime.now(),
+          ),
+        ],
+      );
+      
+      _demoDataService.addConversation(conversation);
+    }
+  }
+
+  List<AdminUser> _getTargetUsers(notif.AudienceFilter filter) {
+    var users = _demoDataService.allUsers;
+    
+    // Filter by roles
+    if (filter.roles.isNotEmpty) {
+      users = users.where((u) => filter.roles.contains(u.role)).toList();
+    }
+    
+    // Filter by seller status
+    if (filter.isSeller != null) {
+      users = users.where((u) => u.isSeller == filter.isSeller).toList();
+    }
+    
+    // Filter by specific user IDs
+    if (filter.userIds.isNotEmpty) {
+      users = users.where((u) => filter.userIds.contains(u.id)).toList();
+    }
+    
+    // Filter by states (if we had location data)
+    // For now, we'll skip state filtering as we don't have location data in AdminUser
+    
+    return users;
   }
 
   Future<void> _persistNotificationTemplates() async {
@@ -849,91 +888,63 @@ class AdminStore extends ChangeNotifier {
     await prefs.setStringList('notif_drafts', _notificationDrafts.map((d) => jsonEncode(d.toJson())).toList());
   }
 
-  // Hero sections CRUD operations
+  // Hero sections CRUD operations - delegate to DemoDataService
   Future<void> addHeroSection(HeroSection heroSection) async {
-    _heroSections.add(heroSection);
+    _demoDataService.addHeroSection(heroSection);
     await addAudit('cms', 'Added hero section: ${heroSection.title}');
-    notifyListeners();
-    await _persistHeroSections();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> updateHeroSection(HeroSection updated) async {
-    final idx = _heroSections.indexWhere((h) => h.id == updated.id);
-    if (idx != -1) {
-      _heroSections[idx] = updated.copyWith(updatedAt: DateTime.now());
-      await addAudit('cms', 'Updated hero section: ${updated.title}');
-      notifyListeners();
-      await _persistHeroSections();
-    }
+    final updatedWithTimestamp = updated.copyWith(updatedAt: DateTime.now());
+    _demoDataService.updateHeroSection(updatedWithTimestamp);
+    await addAudit('cms', 'Updated hero section: ${updated.title}');
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> deleteHeroSection(String id) async {
-    final hero = _heroSections.firstWhere((h) => h.id == id);
-    _heroSections.removeWhere((h) => h.id == id);
+    final hero = heroSections.firstWhere((h) => h.id == id);
+    _demoDataService.removeHeroSection(id);
     await addAudit('cms', 'Deleted hero section: ${hero.title}');
-    notifyListeners();
-    await _persistHeroSections();
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> toggleHeroSectionActive(String id) async {
-    final idx = _heroSections.indexWhere((h) => h.id == id);
-    if (idx != -1) {
-      final hero = _heroSections[idx];
-      _heroSections[idx] = hero.copyWith(
-        isActive: !hero.isActive,
-        updatedAt: DateTime.now(),
-      );
-      await addAudit('cms', '${hero.isActive ? 'Deactivated' : 'Activated'} hero section: ${hero.title}');
-      notifyListeners();
-      await _persistHeroSections();
-    }
+    final hero = heroSections.firstWhere((h) => h.id == id);
+    final updatedHero = hero.copyWith(
+      isActive: !hero.isActive,
+      updatedAt: DateTime.now(),
+    );
+    _demoDataService.updateHeroSection(updatedHero);
+    await addAudit('cms', '${hero.isActive ? 'Deactivated' : 'Activated'} hero section: ${hero.title}');
+    // DemoDataService will notify listeners automatically
   }
 
   Future<void> reorderHeroSections(List<String> orderedIds) async {
     final Map<String, HeroSection> heroMap = {
-      for (final hero in _heroSections) hero.id: hero
+      for (final hero in heroSections) hero.id: hero
     };
     
-    _heroSections.clear();
     for (int i = 0; i < orderedIds.length; i++) {
       final hero = heroMap[orderedIds[i]];
       if (hero != null) {
-        _heroSections.add(hero.copyWith(
+        final updatedHero = hero.copyWith(
           priority: i + 1,
           updatedAt: DateTime.now(),
-        ));
+        );
+        _demoDataService.updateHeroSection(updatedHero);
       }
     }
     
     await addAudit('cms', 'Reordered hero sections');
-    notifyListeners();
-    await _persistHeroSections();
+    // DemoDataService will notify listeners automatically
   }
 
-  Future<void> _persistHeroSections() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> heroJsonList = _heroSections
-        .map((h) => jsonEncode(h.toJson()))
-        .toList();
-    await prefs.setStringList('hero_sections', heroJsonList);
-  }
+  // _persistHeroSections method removed - using DemoDataService now
 
   Future<void> _loadHeroSections() async {
     final prefs = await SharedPreferences.getInstance();
-    final List<String>? heroJsonList = prefs.getStringList('hero_sections');
-    
-    if (heroJsonList != null && heroJsonList.isNotEmpty) {
-      _heroSections.clear();
-      for (final jsonString in heroJsonList) {
-        try {
-          final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
-          final heroSection = HeroSection.fromJson(jsonMap);
-          _heroSections.add(heroSection);
-        } catch (e) {
-          print('Error loading hero section: $e');
-        }
-      }
-    }
+    // Hero sections loading removed - using DemoDataService now
     
     // Load slide durations
     _firstSlideDurationSeconds = prefs.getInt('first_slide_duration') ?? 10;
@@ -1035,6 +1046,107 @@ class AdminStore extends ChangeNotifier {
     }
   }
 
+  // User subscription management methods
+  Future<void> updateUserSubscription(String userId, String plan) async {
+    final user = _demoDataService.getUser(userId);
+    if (user != null) {
+      final updatedUser = user.copyWith(plan: plan);
+      _demoDataService.updateUser(updatedUser);
+      await addAudit('subscriptions', 'Updated user $userId subscription to $plan');
+      notifyListeners();
+    }
+  }
+
+  Future<void> bulkUpdateUserSubscriptions(List<String> userIds, String plan) async {
+    for (final userId in userIds) {
+      final user = _demoDataService.getUser(userId);
+      if (user != null) {
+        final updatedUser = user.copyWith(plan: plan);
+        _demoDataService.updateUser(updatedUser);
+      }
+    }
+    await addAudit('subscriptions', 'Bulk updated ${userIds.length} users to $plan plan');
+    notifyListeners();
+  }
+
+  Future<void> upgradeUser(String userId, String newPlan) async {
+    final user = _demoDataService.getUser(userId);
+    if (user != null) {
+      final updatedUser = user.copyWith(plan: newPlan);
+      _demoDataService.updateUser(updatedUser);
+      await addAudit('subscriptions', 'Upgraded user $userId to $newPlan');
+      notifyListeners();
+    }
+  }
+
+  Future<void> downgradeUser(String userId, String newPlan) async {
+    final user = _demoDataService.getUser(userId);
+    if (user != null) {
+      final updatedUser = user.copyWith(plan: newPlan);
+      _demoDataService.updateUser(updatedUser);
+      await addAudit('subscriptions', 'Downgraded user $userId to $newPlan');
+      notifyListeners();
+    }
+  }
+
+  Future<void> cancelUserSubscription(String userId) async {
+    final user = _demoDataService.getUser(userId);
+    if (user != null) {
+      final updatedUser = user.copyWith(plan: 'free');
+      _demoDataService.updateUser(updatedUser);
+      await addAudit('subscriptions', 'Cancelled subscription for user $userId');
+      notifyListeners();
+    }
+  }
+
+  Future<void> extendUserSubscription(String userId, int days) async {
+    // For demo purposes, we'll just log the extension
+    // In a real app, you'd update subscription expiry dates
+    await addAudit('subscriptions', 'Extended subscription for user $userId by $days days');
+    notifyListeners();
+  }
+
+  // Get subscription statistics
+  Map<String, int> getSubscriptionStats() {
+    final users = _demoDataService.allUsers;
+    final stats = <String, int>{};
+    
+    for (final user in users) {
+      stats[user.plan] = (stats[user.plan] ?? 0) + 1;
+    }
+    
+    return stats;
+  }
+
+  List<AdminUser> getUsersByPlan(String plan) {
+    return _demoDataService.allUsers.where((user) => user.plan == plan).toList();
+  }
+
+  // State Flow Data Management - Sync with DemoDataService
+  List<PowerGenerator> get allPowerGenerators => _demoDataService.allPowerGenerators;
+
+  Future<void> addPowerGeneratorToStateInfo(PowerGenerator generator) async {
+    _demoDataService.addPowerGenerator(generator);
+    await addAudit('state_flow', 'Added power generator: ${generator.name}');
+    notifyListeners();
+  }
+
+  Future<void> updatePowerGeneratorInStateInfo(PowerGenerator generator) async {
+    _demoDataService.updatePowerGenerator(generator);
+    await addAudit('state_flow', 'Updated power generator: ${generator.name}');
+    notifyListeners();
+  }
+
+  Future<void> removePowerGeneratorFromStateInfo(String generatorId) async {
+    _demoDataService.removePowerGenerator(generatorId);
+    await addAudit('state_flow', 'Removed power generator: $generatorId');
+    notifyListeners();
+  }
+
+  PowerGenerator? getPowerGeneratorFromStateInfo(String generatorId) {
+    return _demoDataService.getPowerGenerator(generatorId);
+  }
+
   Future<void> addPrice(sub.Price price) async {
     _prices.add(price);
     await addAudit('billing', 'Added price for ${price.planId} ${price.interval.name} ${price.currency} ${price.amountMinor}m');
@@ -1070,6 +1182,603 @@ class AdminStore extends ChangeNotifier {
         ..clear()
         ..addAll(list.map(sub.PlanCardConfig.fromJsonString));
       notifyListeners();
+    }
+  }
+
+  // ================= STATE FLOW MANAGEMENT =================
+  
+  // Custom Fields Management
+  final List<CustomField> _customFields = [];
+  final Map<EntityType, List<String>> _entityCustomFields = {};
+  
+  List<CustomField> get customFields => List.unmodifiable(_customFields);
+  
+  List<CustomField> getCustomFieldsForEntity(EntityType entityType) {
+    final fieldIds = _entityCustomFields[entityType] ?? [];
+    return _customFields.where((field) => fieldIds.contains(field.id)).toList();
+  }
+  
+  Future<void> addCustomField(CustomField field, {EntityType? entityType}) async {
+    _customFields.add(field);
+    if (entityType != null) {
+      final fieldIds = _entityCustomFields.putIfAbsent(entityType, () => []);
+      if (!fieldIds.contains(field.id)) {
+        fieldIds.add(field.id);
+      }
+    }
+    await addAudit('state_flow', 'Added custom field: ${field.label}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> updateCustomField(CustomField updated) async {
+    final idx = _customFields.indexWhere((f) => f.id == updated.id);
+    if (idx != -1) {
+      _customFields[idx] = updated.copyWith(updatedAt: DateTime.now());
+      await addAudit('state_flow', 'Updated custom field: ${updated.label}');
+      notifyListeners();
+      await _persistStateFlowData();
+    }
+  }
+  
+  Future<void> deleteCustomField(String fieldId) async {
+    final field = _customFields.firstWhere((f) => f.id == fieldId);
+    _customFields.removeWhere((f) => f.id == fieldId);
+    
+    // Remove from all entity types
+    _entityCustomFields.forEach((entityType, fieldIds) {
+      fieldIds.remove(fieldId);
+    });
+    
+    await addAudit('state_flow', 'Deleted custom field: ${field.label}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  // Custom Tabs Management
+  final List<CustomTab> _customTabs = [];
+  final Map<EntityType, List<String>> _entityCustomTabs = {};
+  
+  List<CustomTab> get customTabs => List.unmodifiable(_customTabs);
+  
+  List<CustomTab> getCustomTabsForEntity(EntityType entityType) {
+    final tabIds = _entityCustomTabs[entityType] ?? [];
+    return _customTabs.where((tab) => tabIds.contains(tab.id)).toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  }
+  
+  Future<void> addCustomTab(CustomTab tab, EntityType entityType) async {
+    _customTabs.add(tab);
+    final tabIds = _entityCustomTabs.putIfAbsent(entityType, () => []);
+    if (!tabIds.contains(tab.id)) {
+      tabIds.add(tab.id);
+    }
+    await addAudit('state_flow', 'Added custom tab: ${tab.label} for ${entityType.name}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> updateCustomTab(CustomTab updated) async {
+    final idx = _customTabs.indexWhere((t) => t.id == updated.id);
+    if (idx != -1) {
+      _customTabs[idx] = updated.copyWith(updatedAt: DateTime.now());
+      await addAudit('state_flow', 'Updated custom tab: ${updated.label}');
+      notifyListeners();
+      await _persistStateFlowData();
+    }
+  }
+  
+  Future<void> deleteCustomTab(String tabId) async {
+    final tab = _customTabs.firstWhere((t) => t.id == tabId);
+    _customTabs.removeWhere((t) => t.id == tabId);
+    
+    // Remove from all entity types
+    _entityCustomTabs.forEach((entityType, tabIds) {
+      tabIds.remove(tabId);
+    });
+    
+    await addAudit('state_flow', 'Deleted custom tab: ${tab.label}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> reorderCustomTabs(EntityType entityType, List<String> orderedTabIds) async {
+    for (int i = 0; i < orderedTabIds.length; i++) {
+      final tabIdx = _customTabs.indexWhere((t) => t.id == orderedTabIds[i]);
+      if (tabIdx != -1) {
+        _customTabs[tabIdx] = _customTabs[tabIdx].copyWith(
+          order: i,
+          updatedAt: DateTime.now(),
+        );
+      }
+    }
+    await addAudit('state_flow', 'Reordered tabs for ${entityType.name}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  // Entity Templates Management
+  final List<EntityTemplate> _entityTemplates = [];
+  
+  List<EntityTemplate> get entityTemplates => List.unmodifiable(_entityTemplates);
+  
+  List<EntityTemplate> getTemplatesForEntityType(EntityType entityType) {
+    return _entityTemplates.where((t) => t.entityType == entityType).toList();
+  }
+  
+  EntityTemplate? getDefaultTemplate(EntityType entityType) {
+    try {
+      return _entityTemplates.firstWhere(
+        (t) => t.entityType == entityType && t.isDefault,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  Future<void> addEntityTemplate(EntityTemplate template) async {
+    // If this is marked as default, unset other defaults for the same entity type
+    if (template.isDefault) {
+      for (int i = 0; i < _entityTemplates.length; i++) {
+        if (_entityTemplates[i].entityType == template.entityType && _entityTemplates[i].isDefault) {
+          _entityTemplates[i] = EntityTemplate(
+            id: _entityTemplates[i].id,
+            name: _entityTemplates[i].name,
+            entityType: _entityTemplates[i].entityType,
+            description: _entityTemplates[i].description,
+            tabs: _entityTemplates[i].tabs,
+            globalFields: _entityTemplates[i].globalFields,
+            defaultValues: _entityTemplates[i].defaultValues,
+            isDefault: false,
+            isActive: _entityTemplates[i].isActive,
+            createdAt: _entityTemplates[i].createdAt,
+            updatedAt: DateTime.now(),
+          );
+        }
+      }
+    }
+    
+    _entityTemplates.add(template);
+    await addAudit('state_flow', 'Added entity template: ${template.name}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> updateEntityTemplate(EntityTemplate updated) async {
+    final idx = _entityTemplates.indexWhere((t) => t.id == updated.id);
+    if (idx != -1) {
+      // Handle default template logic
+      if (updated.isDefault) {
+        for (int i = 0; i < _entityTemplates.length; i++) {
+          if (i != idx && _entityTemplates[i].entityType == updated.entityType && _entityTemplates[i].isDefault) {
+            _entityTemplates[i] = EntityTemplate(
+              id: _entityTemplates[i].id,
+              name: _entityTemplates[i].name,
+              entityType: _entityTemplates[i].entityType,
+              description: _entityTemplates[i].description,
+              tabs: _entityTemplates[i].tabs,
+              globalFields: _entityTemplates[i].globalFields,
+              defaultValues: _entityTemplates[i].defaultValues,
+              isDefault: false,
+              isActive: _entityTemplates[i].isActive,
+              createdAt: _entityTemplates[i].createdAt,
+              updatedAt: DateTime.now(),
+            );
+          }
+        }
+      }
+      
+      _entityTemplates[idx] = EntityTemplate(
+        id: updated.id,
+        name: updated.name,
+        entityType: updated.entityType,
+        description: updated.description,
+        tabs: updated.tabs,
+        globalFields: updated.globalFields,
+        defaultValues: updated.defaultValues,
+        isDefault: updated.isDefault,
+        isActive: updated.isActive,
+        createdAt: updated.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      
+      await addAudit('state_flow', 'Updated entity template: ${updated.name}');
+      notifyListeners();
+      await _persistStateFlowData();
+    }
+  }
+  
+  Future<void> deleteEntityTemplate(String templateId) async {
+    final template = _entityTemplates.firstWhere((t) => t.id == templateId);
+    _entityTemplates.removeWhere((t) => t.id == templateId);
+    await addAudit('state_flow', 'Deleted entity template: ${template.name}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  // Admin Power Generators Management
+  final List<AdminPowerGenerator> _adminPowerGenerators = [];
+  
+  List<AdminPowerGenerator> get adminPowerGenerators => List.unmodifiable(_adminPowerGenerators);
+  
+  List<AdminPowerGenerator> get publishedPowerGenerators => 
+      _adminPowerGenerators.where((g) => g.isPublished).toList();
+  
+  Future<void> addAdminPowerGenerator(AdminPowerGenerator generator) async {
+    _adminPowerGenerators.add(generator);
+    await addAudit('state_flow', 'Added power generator: ${generator.name}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> updateAdminPowerGenerator(AdminPowerGenerator updated) async {
+    final idx = _adminPowerGenerators.indexWhere((g) => g.id == updated.id);
+    if (idx != -1) {
+      _adminPowerGenerators[idx] = updated;
+      await addAudit('state_flow', 'Updated power generator: ${updated.name}');
+      notifyListeners();
+      await _persistStateFlowData();
+    }
+  }
+  
+  Future<void> deleteAdminPowerGenerator(String generatorId) async {
+    final generator = _adminPowerGenerators.firstWhere((g) => g.id == generatorId);
+    _adminPowerGenerators.removeWhere((g) => g.id == generatorId);
+    await addAudit('state_flow', 'Deleted power generator: ${generator.name}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> togglePowerGeneratorPublished(String generatorId) async {
+    final idx = _adminPowerGenerators.indexWhere((g) => g.id == generatorId);
+    if (idx != -1) {
+      final generator = _adminPowerGenerators[idx];
+      _adminPowerGenerators[idx] = generator.copyWith(
+        isPublished: !generator.isPublished,
+        publishedAt: !generator.isPublished ? DateTime.now() : null,
+      );
+      await addAudit('state_flow', '${generator.isPublished ? 'Unpublished' : 'Published'} power generator: ${generator.name}');
+      notifyListeners();
+      await _persistStateFlowData();
+    }
+  }
+  
+  // Media Management
+  final List<MediaAsset> _mediaAssets = [];
+  
+  List<MediaAsset> get mediaAssets => List.unmodifiable(_mediaAssets);
+  
+  List<MediaAsset> get imageAssets => _mediaAssets
+      .where((asset) => asset.mimeType.startsWith('image/'))
+      .toList();
+  
+  List<MediaAsset> get documentAssets => _mediaAssets
+      .where((asset) => !asset.mimeType.startsWith('image/') && !asset.mimeType.startsWith('video/'))
+      .toList();
+  
+  Future<void> addMediaAsset(MediaAsset asset) async {
+    _mediaAssets.add(asset);
+    await addAudit('state_flow', 'Uploaded media: ${asset.originalName}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> updateMediaAsset(MediaAsset updated) async {
+    final idx = _mediaAssets.indexWhere((a) => a.id == updated.id);
+    if (idx != -1) {
+      _mediaAssets[idx] = updated;
+      await addAudit('state_flow', 'Updated media: ${updated.originalName}');
+      notifyListeners();
+      await _persistStateFlowData();
+    }
+  }
+  
+  Future<void> deleteMediaAsset(String assetId) async {
+    final asset = _mediaAssets.firstWhere((a) => a.id == assetId);
+    _mediaAssets.removeWhere((a) => a.id == assetId);
+    await addAudit('state_flow', 'Deleted media: ${asset.originalName}');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  Future<void> bulkDeleteMediaAssets(List<String> assetIds) async {
+    final deletedCount = assetIds.length;
+    _mediaAssets.removeWhere((a) => assetIds.contains(a.id));
+    await addAudit('state_flow', 'Bulk deleted $deletedCount media assets');
+    notifyListeners();
+    await _persistStateFlowData();
+  }
+  
+  List<MediaAsset> searchMediaAssets({
+    String? query,
+    String? mimeType,
+    List<String>? tags,
+    String? uploadedBy,
+    DateTime? uploadedAfter,
+    DateTime? uploadedBefore,
+  }) {
+    return _mediaAssets.where((asset) {
+      if (query != null && query.isNotEmpty) {
+        final searchQuery = query.toLowerCase();
+        if (!asset.originalName.toLowerCase().contains(searchQuery) &&
+            !(asset.caption?.toLowerCase().contains(searchQuery) ?? false) &&
+            !(asset.altText?.toLowerCase().contains(searchQuery) ?? false)) {
+          return false;
+        }
+      }
+      
+      if (mimeType != null && !asset.mimeType.startsWith(mimeType)) {
+        return false;
+      }
+      
+      if (tags != null && tags.isNotEmpty) {
+        if (!tags.any((tag) => asset.tags.contains(tag))) {
+          return false;
+        }
+      }
+      
+      if (uploadedBy != null && asset.uploadedBy != uploadedBy) {
+        return false;
+      }
+      
+      if (uploadedAfter != null && asset.uploadedAt.isBefore(uploadedAfter)) {
+        return false;
+      }
+      
+      if (uploadedBefore != null && asset.uploadedAt.isAfter(uploadedBefore)) {
+        return false;
+      }
+      
+      return true;
+    }).toList();
+  }
+  
+  // Search and Filter for State Flow Entities
+  List<AdminPowerGenerator> searchPowerGenerators(StateFlowSearchFilter filter) {
+    return _adminPowerGenerators.where((generator) {
+      if (filter.query != null && filter.query!.isNotEmpty) {
+        final query = filter.query!.toLowerCase();
+        if (!generator.name.toLowerCase().contains(query) &&
+            !generator.description.toLowerCase().contains(query) &&
+            !generator.location.toLowerCase().contains(query)) {
+          return false;
+        }
+      }
+      
+      if (filter.isPublished != null && generator.isPublished != filter.isPublished) {
+        return false;
+      }
+      
+      if (filter.location != null && 
+          !generator.location.toLowerCase().contains(filter.location!.toLowerCase())) {
+        return false;
+      }
+      
+      if (filter.tags != null && filter.tags!.isNotEmpty) {
+        if (!filter.tags!.any((tag) => generator.tags.contains(tag))) {
+          return false;
+        }
+      }
+      
+      return true;
+    }).toList();
+  }
+  
+  // Data Import/Export
+  Map<String, dynamic> exportStateFlowData() {
+    return {
+      'customFields': _customFields.map((f) => f.toJson()).toList(),
+      'entityCustomFields': _entityCustomFields.map(
+        (key, value) => MapEntry(key.name, value),
+      ),
+      'customTabs': _customTabs.map((t) => t.toJson()).toList(),
+      'entityCustomTabs': _entityCustomTabs.map(
+        (key, value) => MapEntry(key.name, value),
+      ),
+      'entityTemplates': _entityTemplates.map((t) => t.toJson()).toList(),
+      'adminPowerGenerators': _adminPowerGenerators.map((g) => g.toJson()).toList(),
+      'mediaAssets': _mediaAssets.map((a) => a.toJson()).toList(),
+      'exportedAt': DateTime.now().toIso8601String(),
+    };
+  }
+  
+  Future<void> importStateFlowData(Map<String, dynamic> data) async {
+    try {
+      // Import custom fields
+      if (data['customFields'] != null) {
+        _customFields.clear();
+        _customFields.addAll((data['customFields'] as List<dynamic>)
+            .map((f) => CustomField.fromJson(f as Map<String, dynamic>)));
+      }
+      
+      // Import entity custom fields mappings
+      if (data['entityCustomFields'] != null) {
+        _entityCustomFields.clear();
+        (data['entityCustomFields'] as Map<String, dynamic>).forEach((key, value) {
+          final entityType = EntityType.values.byName(key);
+          _entityCustomFields[entityType] = (value as List<dynamic>).cast<String>();
+        });
+      }
+      
+      // Import custom tabs
+      if (data['customTabs'] != null) {
+        _customTabs.clear();
+        _customTabs.addAll((data['customTabs'] as List<dynamic>)
+            .map((t) => CustomTab.fromJson(t as Map<String, dynamic>)));
+      }
+      
+      // Import entity custom tabs mappings
+      if (data['entityCustomTabs'] != null) {
+        _entityCustomTabs.clear();
+        (data['entityCustomTabs'] as Map<String, dynamic>).forEach((key, value) {
+          final entityType = EntityType.values.byName(key);
+          _entityCustomTabs[entityType] = (value as List<dynamic>).cast<String>();
+        });
+      }
+      
+      // Import entity templates
+      if (data['entityTemplates'] != null) {
+        _entityTemplates.clear();
+        _entityTemplates.addAll((data['entityTemplates'] as List<dynamic>)
+            .map((t) => EntityTemplate.fromJson(t as Map<String, dynamic>)));
+      }
+      
+      // Import admin power generators
+      if (data['adminPowerGenerators'] != null) {
+        _adminPowerGenerators.clear();
+        _adminPowerGenerators.addAll((data['adminPowerGenerators'] as List<dynamic>)
+            .map((g) => AdminPowerGenerator.fromJson(g as Map<String, dynamic>)));
+      }
+      
+      // Import media assets
+      if (data['mediaAssets'] != null) {
+        _mediaAssets.clear();
+        _mediaAssets.addAll((data['mediaAssets'] as List<dynamic>)
+            .map((a) => MediaAsset.fromJson(a as Map<String, dynamic>)));
+      }
+      
+      await addAudit('state_flow', 'Imported state flow data');
+      notifyListeners();
+      await _persistStateFlowData();
+    } catch (e) {
+      await addAudit('state_flow', 'Failed to import state flow data: $e');
+      rethrow;
+    }
+  }
+  
+  // Analytics placeholder - would connect to actual analytics service
+  Future<StateFlowAnalytics> getEntityAnalytics(String entityId, EntityType entityType, 
+      {DateTime? startDate, DateTime? endDate}) async {
+    // This would typically fetch from an analytics service
+    // For now, return mock data
+    return StateFlowAnalytics(
+      entityId: entityId,
+      entityType: entityType,
+      viewCount: 1250,
+      uniqueViewers: 890,
+      avgTimeSpent: 180.5,
+      tabViews: {'overview': 450, 'details': 320, 'posts': 280},
+      searchTerms: {'power': 45, 'electricity': 32, 'generation': 28},
+      deviceTypes: {'mobile': 60, 'desktop': 35, 'tablet': 5},
+      locations: {'Mumbai': 25, 'Delhi': 20, 'Bangalore': 15},
+      startDate: startDate ?? DateTime.now().subtract(const Duration(days: 30)),
+      endDate: endDate ?? DateTime.now(),
+    );
+  }
+  
+  Future<void> _persistStateFlowData() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Persist custom fields
+    await prefs.setStringList('state_flow_custom_fields', 
+        _customFields.map((f) => jsonEncode(f.toJson())).toList());
+    
+    // Persist entity custom fields mappings
+    final entityFieldsJson = <String>[];
+    _entityCustomFields.forEach((entityType, fieldIds) {
+      entityFieldsJson.add('${entityType.name}:${fieldIds.join(',')}');
+    });
+    await prefs.setStringList('state_flow_entity_fields', entityFieldsJson);
+    
+    // Persist custom tabs
+    await prefs.setStringList('state_flow_custom_tabs',
+        _customTabs.map((t) => jsonEncode(t.toJson())).toList());
+    
+    // Persist entity custom tabs mappings
+    final entityTabsJson = <String>[];
+    _entityCustomTabs.forEach((entityType, tabIds) {
+      entityTabsJson.add('${entityType.name}:${tabIds.join(',')}');
+    });
+    await prefs.setStringList('state_flow_entity_tabs', entityTabsJson);
+    
+    // Persist entity templates
+    await prefs.setStringList('state_flow_entity_templates',
+        _entityTemplates.map((t) => jsonEncode(t.toJson())).toList());
+    
+    // Persist admin power generators
+    await prefs.setStringList('state_flow_admin_generators',
+        _adminPowerGenerators.map((g) => jsonEncode(g.toJson())).toList());
+    
+    // Persist media assets
+    await prefs.setStringList('state_flow_media_assets',
+        _mediaAssets.map((a) => jsonEncode(a.toJson())).toList());
+  }
+  
+  Future<void> _loadStateFlowData() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    try {
+      // Load custom fields
+      final customFieldsJson = prefs.getStringList('state_flow_custom_fields') ?? [];
+      if (customFieldsJson.isNotEmpty) {
+        _customFields.clear();
+        _customFields.addAll(customFieldsJson.map((json) => 
+            CustomField.fromJson(jsonDecode(json) as Map<String, dynamic>)));
+      }
+      
+      // Load entity custom fields mappings
+      final entityFieldsJson = prefs.getStringList('state_flow_entity_fields') ?? [];
+      if (entityFieldsJson.isNotEmpty) {
+        _entityCustomFields.clear();
+        for (final mapping in entityFieldsJson) {
+          final parts = mapping.split(':');
+          if (parts.length == 2) {
+            final entityType = EntityType.values.byName(parts[0]);
+            final fieldIds = parts[1].split(',').where((id) => id.isNotEmpty).toList();
+            _entityCustomFields[entityType] = fieldIds;
+          }
+        }
+      }
+      
+      // Load custom tabs
+      final customTabsJson = prefs.getStringList('state_flow_custom_tabs') ?? [];
+      if (customTabsJson.isNotEmpty) {
+        _customTabs.clear();
+        _customTabs.addAll(customTabsJson.map((json) => 
+            CustomTab.fromJson(jsonDecode(json) as Map<String, dynamic>)));
+      }
+      
+      // Load entity custom tabs mappings
+      final entityTabsJson = prefs.getStringList('state_flow_entity_tabs') ?? [];
+      if (entityTabsJson.isNotEmpty) {
+        _entityCustomTabs.clear();
+        for (final mapping in entityTabsJson) {
+          final parts = mapping.split(':');
+          if (parts.length == 2) {
+            final entityType = EntityType.values.byName(parts[0]);
+            final tabIds = parts[1].split(',').where((id) => id.isNotEmpty).toList();
+            _entityCustomTabs[entityType] = tabIds;
+          }
+        }
+      }
+      
+      // Load entity templates
+      final entityTemplatesJson = prefs.getStringList('state_flow_entity_templates') ?? [];
+      if (entityTemplatesJson.isNotEmpty) {
+        _entityTemplates.clear();
+        _entityTemplates.addAll(entityTemplatesJson.map((json) => 
+            EntityTemplate.fromJson(jsonDecode(json) as Map<String, dynamic>)));
+      }
+      
+      // Load admin power generators
+      final adminGeneratorsJson = prefs.getStringList('state_flow_admin_generators') ?? [];
+      if (adminGeneratorsJson.isNotEmpty) {
+        _adminPowerGenerators.clear();
+        _adminPowerGenerators.addAll(adminGeneratorsJson.map((json) => 
+            AdminPowerGenerator.fromJson(jsonDecode(json) as Map<String, dynamic>)));
+      }
+      
+      // Load media assets
+      final mediaAssetsJson = prefs.getStringList('state_flow_media_assets') ?? [];
+      if (mediaAssetsJson.isNotEmpty) {
+        _mediaAssets.clear();
+        _mediaAssets.addAll(mediaAssetsJson.map((json) => 
+            MediaAsset.fromJson(jsonDecode(json) as Map<String, dynamic>)));
+      }
+      
+    } catch (e) {
+      print('Error loading state flow data: $e');
+      // Continue with empty data if loading fails
     }
   }
 }

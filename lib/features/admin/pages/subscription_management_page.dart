@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../store/admin_store.dart';
 import '../models/subscription_models.dart' as sub;
+import 'subscriptions_tab.dart';
 
 class SubscriptionManagementPage extends StatefulWidget {
   const SubscriptionManagementPage({super.key});
@@ -58,7 +59,7 @@ class _SubscriptionManagementPageState extends State<SubscriptionManagementPage>
           _placeholder('Points & Usage: allocations, rollover, overage, usage charts'),
           _placeholder('Add-ons: point packs, feature unlocks, attach rules'),
           _placeholder('Promotions: coupons, intro pricing, bundles, eligibility'),
-          _placeholder('Subscriptions: search, lifecycle actions, invoices, adjustments'),
+          SubscriptionsTab(),
           _placeholder('Billing & Taxes: tax regions, GST/VAT, provider settings'),
           _placeholder('Reports: MRR/ARR, churn, cohorts, plan performance'),
           _placeholder('Settings: trials, grace, cancellation, emails, guardrails'),

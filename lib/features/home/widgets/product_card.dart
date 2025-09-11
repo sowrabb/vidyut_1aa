@@ -103,13 +103,13 @@ class _ProductCardState extends State<ProductCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section - Fixed aspect ratio
+            // Image Section - Responsive aspect ratio (gives more room to content on phones)
             AspectRatio(
-              aspectRatio: 4 / 3,
+              aspectRatio: isMobile ? (16 / 9) : (4 / 3),
               child: _buildImageSection(isDesktop),
             ),
 
-            // Content Section - Flexible height
+            // Content Section - Expanded to fill available space
             Expanded(
               child: Padding(
                 padding: EdgeInsets.all(isMobile ? 6 : 8),
@@ -255,80 +255,86 @@ class _ProductCardState extends State<ProductCard> {
   Widget _buildContentSection(bool isDesktop, bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Brand
-        Text(
-          widget.brand,
-          style: TextStyle(
-            fontSize: isMobile ? 9 : 10,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-
-        SizedBox(height: isMobile ? 2 : 3),
-
-        // Title
-        Text(
-          widget.title,
-          style: TextStyle(
-            fontSize: isMobile ? 12 : 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-            height: 1.2,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-
-        SizedBox(height: isMobile ? 2 : 3),
-
-        // Subtitle
-        Text(
-          widget.subtitle,
-          style: TextStyle(
-            fontSize: isMobile ? 9 : 10,
-            color: AppColors.textSecondary,
-            height: 1.1,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-
-        SizedBox(height: isMobile ? 3 : 4),
-
-        // Rating
-        if (widget.rating != null)
-          Row(
-            children: [
-              Icon(Icons.star, size: isMobile ? 10 : 12, color: Colors.amber),
-              SizedBox(width: isMobile ? 2 : 3),
-              Text(
-                widget.rating!.toStringAsFixed(1),
-                style: TextStyle(
-                    fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.w500),
+        // Top content section (shrinks first if space is tight)
+        Flexible(
+          fit: FlexFit.loose,
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Brand
+            Text(
+              widget.brand,
+              style: TextStyle(
+                fontSize: isMobile ? 9 : 10,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
 
-        const Spacer(),
+            SizedBox(height: isMobile ? 1 : 2),
 
-        // Price
-        Text(
-          widget.price,
-          style: TextStyle(
-            fontSize: isMobile ? 14 : 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
+            // Title
+            Text(
+              widget.title,
+              style: TextStyle(
+                fontSize: isMobile ? 12 : 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+                height: 1.2,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
 
-        SizedBox(height: isMobile ? 4 : 6),
+            SizedBox(height: isMobile ? 1 : 2),
 
-        // Action Buttons
+            // Subtitle
+            Text(
+              widget.subtitle,
+              style: TextStyle(
+                fontSize: isMobile ? 9 : 10,
+                color: AppColors.textSecondary,
+                height: 1.1,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            SizedBox(height: isMobile ? 2 : 3),
+
+            // Rating
+            if (widget.rating != null)
+              Row(
+                children: [
+                  Icon(Icons.star, size: isMobile ? 10 : 12, color: Colors.amber),
+                  SizedBox(width: isMobile ? 2 : 3),
+                  Text(
+                    widget.rating!.toStringAsFixed(1),
+                    style: TextStyle(
+                        fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+
+            SizedBox(height: isMobile ? 2 : 3),
+
+            // Price
+            Text(
+              widget.price,
+              style: TextStyle(
+                fontSize: isMobile ? 14 : 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        )),
+
+        // Bottom section with action buttons
         Row(
           children: [
             Expanded(
@@ -339,8 +345,8 @@ class _ProductCardState extends State<ProductCard> {
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(6),
-                        minimumSize: const Size(32, 32),
+                        padding: const EdgeInsets.all(3),
+                        minimumSize: const Size(26, 26),
                       ),
                     )
                   : FilledButton.icon(
@@ -351,8 +357,8 @@ class _ProductCardState extends State<ProductCard> {
                           style: TextStyle(fontSize: isDesktop ? 11 : 10)),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        minimumSize: const Size(0, 26),
                       ),
                     ),
             ),
@@ -365,8 +371,8 @@ class _ProductCardState extends State<ProductCard> {
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.whatsapp,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(6),
-                        minimumSize: const Size(32, 32),
+                        padding: const EdgeInsets.all(3),
+                        minimumSize: const Size(26, 26),
                       ),
                     )
                   : FilledButton.icon(
@@ -378,8 +384,8 @@ class _ProductCardState extends State<ProductCard> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.whatsapp,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        minimumSize: const Size(0, 26),
                       ),
                     ),
             ),

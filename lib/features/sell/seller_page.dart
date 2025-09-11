@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
 import 'store/seller_store.dart';
-import '../home/widgets/product_card.dart';
+import '../../widgets/responsive_product_grid.dart';
 
 class SellerPage extends StatefulWidget {
   final String sellerName;
@@ -39,6 +39,33 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
     final baseLng = 78.4867;
     final delta = (seed.hashCode % 1000) / 10000.0; // 0..0.0999
     return (baseLat + delta, baseLng + delta);
+  }
+
+  Future<void> _launchPhone(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    }
+  }
+
+  Future<void> _launchEmail(String email) async {
+    final Uri emailUri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    }
+  }
+
+  Future<void> _launchWebsite(String website) async {
+    Uri websiteUri;
+    if (website.startsWith('http://') || website.startsWith('https://')) {
+      websiteUri = Uri.parse(website);
+    } else {
+      websiteUri = Uri.parse('https://$website');
+    }
+    
+    if (await canLaunchUrl(websiteUri)) {
+      await launchUrl(websiteUri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -121,11 +148,22 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
         ? '${distanceKm(lat1: appState.latitude!, lon1: appState.longitude!, lat2: sellerPos.$1, lon2: sellerPos.$2).toStringAsFixed(1)} km away'
         : null;
 
+    final store = context.read<SellerStore>();
     final contactMeta = [
       const _Meta('Hyderabad, Telangana'),
       _Meta('GST: 36BDTPG0207N1ZC'),
-      const _MetaIcon(Icons.call, '9000000000'),
-      const _MetaIcon(Icons.email_outlined, 'info@example.com'),
+      if (store.primaryPhone.isNotEmpty)
+        _ClickableMetaIcon(
+          Icons.call, 
+          store.primaryPhone,
+          onTap: () => _launchPhone(store.primaryPhone),
+        ),
+      if (store.primaryEmail.isNotEmpty)
+        _ClickableMetaIcon(
+          Icons.email_outlined, 
+          store.primaryEmail,
+          onTap: () => _launchEmail(store.primaryEmail),
+        ),
       if (distanceText != null) _Meta(distanceText),
     ];
     const statsMeta = [
@@ -294,8 +332,104 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(16), children: [_aboutSection(context)]);
   Widget _productsTab(BuildContext context) => ListView(
       padding: const EdgeInsets.all(16), children: [_productsGallery(context)]);
-  Widget _contactTab(BuildContext context) =>
-      const Center(child: Text('Contact details coming soon'));
+  Widget _contactTab(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final store = context.watch<SellerStore>();
+    
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('Contact Information', style: t.titleLarge),
+        const SizedBox(height: 16),
+        
+        // Primary Contact
+        if (store.primaryPhone.isNotEmpty || store.primaryEmail.isNotEmpty) ...[
+          Text('Primary Contact', style: t.titleMedium),
+          const SizedBox(height: 8),
+          if (store.primaryPhone.isNotEmpty)
+            _ContactItem(
+              icon: Icons.phone,
+              label: 'Phone',
+              value: store.primaryPhone,
+              onTap: () => _launchPhone(store.primaryPhone),
+            ),
+          if (store.primaryEmail.isNotEmpty)
+            _ContactItem(
+              icon: Icons.email,
+              label: 'Email',
+              value: store.primaryEmail,
+              onTap: () => _launchEmail(store.primaryEmail),
+            ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Additional Phones
+        if (store.additionalPhones.isNotEmpty) ...[
+          Text('Additional Phone Numbers', style: t.titleMedium),
+          const SizedBox(height: 8),
+          ...store.additionalPhones.map((phone) => 
+            _ContactItem(
+              icon: Icons.phone,
+              label: 'Phone',
+              value: phone,
+              onTap: () => _launchPhone(phone),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Additional Emails
+        if (store.additionalEmails.isNotEmpty) ...[
+          Text('Additional Email Addresses', style: t.titleMedium),
+          const SizedBox(height: 8),
+          ...store.additionalEmails.map((email) => 
+            _ContactItem(
+              icon: Icons.email,
+              label: 'Email',
+              value: email,
+              onTap: () => _launchEmail(email),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Website
+        if (store.website.isNotEmpty) ...[
+          Text('Website', style: t.titleMedium),
+          const SizedBox(height: 8),
+          _ContactItem(
+            icon: Icons.language,
+            label: 'Website',
+            value: store.website,
+            onTap: () => _launchWebsite(store.website),
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Business Hours (placeholder)
+        Text('Business Hours', style: t.titleMedium),
+        const SizedBox(height: 8),
+        const _ContactItem(
+          icon: Icons.access_time,
+          label: 'Monday - Friday',
+          value: '9:00 AM - 6:00 PM',
+        ),
+        const _ContactItem(
+          icon: Icons.access_time,
+          label: 'Saturday',
+          value: '9:00 AM - 4:00 PM',
+        ),
+        const _ContactItem(
+          icon: Icons.access_time,
+          label: 'Sunday',
+          value: 'Closed',
+        ),
+        
+        // Add bottom padding to prevent content from being cut off by bottom navigation
+        const SizedBox(height: 80),
+      ],
+    );
+  }
 
   Widget _aboutSection(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -362,24 +496,19 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
 
   Widget _productsGallery(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final maxExtent =
-        context.isDesktop ? 280.0 : (context.isTablet ? 200.0 : 180.0);
-    final childAspect = context.isDesktop ? 0.80 : 0.74; // Same as home page
+
+    final demoProducts = List.generate(
+      8,
+      (index) => ProductCardData.demo(index: index),
+    );
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Products & Services', style: t.titleLarge),
       const SizedBox(height: 12),
-      GridView.builder(
+      ResponsiveProductGrid(
+        products: demoProducts,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: 8,
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: maxExtent,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: childAspect, // Match home page exactly
-        ),
-        itemBuilder: (_, i) => ProductCard.demo(index: i),
       ),
       const SizedBox(height: 12),
       Align(
@@ -505,14 +634,30 @@ class _Meta extends StatelessWidget {
       Text(text, style: Theme.of(context).textTheme.bodySmall);
 }
 
-class _MetaIcon extends StatelessWidget {
+
+class _ClickableMetaIcon extends StatelessWidget {
   final IconData icon;
   final String text;
-  const _MetaIcon(this.icon, this.text);
+  final VoidCallback onTap;
+  const _ClickableMetaIcon(this.icon, this.text, {required this.onTap});
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Row(
       mainAxisSize: MainAxisSize.min,
-      children: [Icon(icon, size: 14), const SizedBox(width: 4), _Meta(text)]);
+      children: [
+        Icon(icon, size: 14, color: AppColors.primary),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.primary,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Badge extends StatelessWidget {
@@ -556,6 +701,34 @@ class _Meter extends StatelessWidget {
       const SizedBox(width: 8),
       Text('${(value * 100).round()}%'),
     ]);
+  }
+}
+
+class _ContactItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  
+  const _ContactItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(icon, color: AppColors.primary),
+        title: Text(label),
+        subtitle: Text(value),
+        trailing: onTap != null ? const Icon(Icons.arrow_forward_ios, size: 16) : null,
+        onTap: onTap,
+      ),
+    );
   }
 }
 

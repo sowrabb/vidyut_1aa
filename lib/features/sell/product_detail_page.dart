@@ -12,6 +12,7 @@ import 'package:ionicons/ionicons.dart';
 import 'store/seller_store.dart';
 import '../search/search_page.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../widgets/optimized_image_widget.dart';
 
 class ProductDetailPage extends StatelessWidget {
   final Product product;
@@ -128,9 +129,12 @@ class _Gallery extends StatelessWidget {
       children: [
         AspectRatio(
           aspectRatio: 4 / 3,
-          child: ClipRRect(
+          child: ProductImageWidget(
+            imageUrl: pics.first,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(pics.first, fit: BoxFit.cover),
           ),
         ),
         const SizedBox(height: 8),
@@ -140,10 +144,12 @@ class _Gallery extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: pics.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) => ClipRRect(
+            itemBuilder: (_, i) => ProductImageWidget(
+              imageUrl: pics[i],
+              width: 96,
+              height: 72,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(pics[i],
-                  width: 96, height: 72, fit: BoxFit.cover),
             ),
           ),
         ),

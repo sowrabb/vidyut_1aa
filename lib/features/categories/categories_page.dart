@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import '../../app/breakpoints.dart';
+import '../../app/app_state.dart';
+import '../../services/demo_data_service.dart';
+import '../../widgets/responsive_grid.dart';
+import '../../widgets/responsive_category_card.dart';
 import 'categories_store.dart';
 import 'category_detail_page.dart';
 
@@ -12,7 +16,7 @@ class CategoriesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => CategoriesStore(),
+      create: (context) => CategoriesStore(context.read<AppState>(), context.read<DemoDataService>()),
       builder: (context, _) {
         return Scaffold(
           backgroundColor: AppColors.surface,
@@ -185,31 +189,20 @@ class _CategoriesGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<CategoriesStore>();
-    final w = MediaQuery.sizeOf(context).width;
 
-    final crossAxisCount = w >= AppBreakpoints.desktop
-        ? 4
-        : w >= AppBreakpoints.tablet
-            ? 3
-            : 2;
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: store.filteredCategories.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 0.8,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ResponsiveGrid(
+        gridType: ResponsiveGridType.category,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: store.filteredCategories.map((category) {
+          return ResponsiveCategoryCard(
+            category: category,
+            onTap: () => _navigateToCategory(context, category),
+          );
+        }).toList(),
       ),
-      itemBuilder: (context, index) {
-        final category = store.filteredCategories[index];
-        return _CategoryCard(
-          category: category,
-          onTap: () => _navigateToCategory(context, category),
-        );
-      },
     );
   }
 
@@ -217,103 +210,6 @@ class _CategoriesGrid extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CategoryDetailPage(category: category),
-      ),
-    );
-  }
-}
-
-class _CategoryCard extends StatelessWidget {
-  final CategoryData category;
-  final VoidCallback onTap;
-
-  const _CategoryCard({
-    required this.category,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.outlineSoft),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Category image
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.thumbBg,
-                  image: DecorationImage(
-                    image: NetworkImage(category.imageUrl),
-                    fit: BoxFit.cover,
-                    onError: (exception, stackTrace) {
-                      // Handle image loading error
-                    },
-                  ),
-                ),
-                child: category.imageUrl.isEmpty
-                    ? const Icon(
-                        Icons.category,
-                        size: 48,
-                        color: AppColors.textSecondary,
-                      )
-                    : null,
-              ),
-            ),
-
-            // Category info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      category.name,
-                      style: t.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${category.productCount} products',
-                      style: t.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: onTap,
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                            ),
-                            child: const Text('View'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

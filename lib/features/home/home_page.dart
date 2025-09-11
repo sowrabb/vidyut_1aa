@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ionicons/ionicons.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/layout/app_shell_scaffold.dart';
 import '../../app/app_state.dart';
+import '../../widgets/section_header.dart';
 import 'widgets/hero_slideshow.dart';
 import 'widgets/trusted_brands_strip.dart';
 import 'widgets/categories_grid.dart';
@@ -10,6 +12,8 @@ import 'widgets/products_grid.dart';
 import 'widgets/location_button.dart';
 import '../admin/admin_shell.dart';
 import '../search/search_page.dart';
+import '../categories/categories_page.dart';
+import '../splash/splash_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -128,12 +132,50 @@ class _HomePageState extends State<HomePage> {
                   child: TrustedBrandsStrip(),
                 ),
               ),
+              
+              // Categories Section Header
+              SliverToBoxAdapter(
+                child: SectionHeader(
+                  icon: Ionicons.grid_outline,
+                  title: 'Categories',
+                  actionText: 'View All Categories',
+                  onActionTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CategoriesPage(),
+                      ),
+                    );
+                  },
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                ),
+              ),
+              
+              // Categories Grid
               const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                  padding: EdgeInsets.only(bottom: 16),
                   child: CategoriesGrid(),
                 ),
               ),
+              
+              // Products Section Header  
+              SliverToBoxAdapter(
+                child: SectionHeader(
+                  icon: Ionicons.cube_outline,
+                  title: 'Frequently Bought Products',
+                  actionText: 'Explore Products',
+                  onActionTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CategoriesPage(),
+                      ),
+                    );
+                  },
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                ),
+              ),
+              
+              // Products Grid
               ProductsGrid(radiusKm: appState.radiusKm),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
@@ -141,6 +183,22 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       backgroundColor: Colors.white,
+      // Debug floating action button to test splash screen behavior
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await SplashScreen.resetSplashBehavior();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Splash screen behavior reset. Refresh the page to test.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        backgroundColor: Colors.orange,
+        child: const Icon(Icons.refresh, color: Colors.white),
+      ),
     );
   }
 

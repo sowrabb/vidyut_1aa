@@ -13,13 +13,12 @@ class MessagingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 900;
-    return ChangeNotifierProvider(
-      create: (_) => MessagingStore(),
-      child: Scaffold(
-        appBar: const VidyutAppBar(title: 'Messages'),
-        body: isWide ? const _WideLayout() : const _NarrowLayout(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
+    return Scaffold(
+      appBar: const VidyutAppBar(title: 'Messages'),
+      body: isWide ? const _WideLayout() : const _NarrowLayout(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          try {
             final store = context.read<MessagingStore>();
             showModalBottomSheet(
               context: context,
@@ -34,13 +33,17 @@ class MessagingPage extends StatelessWidget {
                 child: const _NewMessageSheet(),
               ),
             );
-          },
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          child: const Icon(Ionicons.create_outline),
-        ),
-        backgroundColor: AppColors.surface,
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Messaging service not available')),
+            );
+          }
+        },
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Ionicons.create_outline),
       ),
+      backgroundColor: AppColors.surface,
     );
   }
 }
@@ -79,7 +82,7 @@ class _TwoPaneState extends State<_TwoPane> {
 
   void _onStoreChanged() {
     if (!mounted) return;
-    if (_store?.activeConversationId != null) {
+    if (_store?.activeConversationId != null && _store!.activeConversationId!.isNotEmpty) {
       setState(() => showList = false);
     }
   }
@@ -87,11 +90,20 @@ class _TwoPaneState extends State<_TwoPane> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final s = context.read<MessagingStore>();
-    if (!identical(s, _store)) {
-      _store?.removeListener(_onStoreChanged);
-      _store = s;
-      _store?.addListener(_onStoreChanged);
+    try {
+      final s = context.read<MessagingStore>();
+      if (!identical(s, _store)) {
+        _store?.removeListener(_onStoreChanged);
+        _store = s;
+        _store?.addListener(_onStoreChanged);
+        // Check if there's already an active conversation
+        if (_store?.activeConversationId != null && _store!.activeConversationId!.isNotEmpty) {
+          setState(() => showList = false);
+        }
+      }
+    } catch (e) {
+      // Provider not available yet, will retry on next build
+      _store = null;
     }
   }
 
@@ -245,8 +257,9 @@ class _ConversationList extends StatelessWidget {
   const _ConversationList({this.onOpen});
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<MessagingStore>();
-    final items = store.conversations;
+    try {
+      final store = context.watch<MessagingStore>();
+      final items = store.conversations;
     return ListView.separated(
       itemCount: items.length,
       separatorBuilder: (_, __) =>
@@ -292,6 +305,11 @@ class _ConversationList extends StatelessWidget {
         );
       },
     );
+    } catch (e) {
+      return const Center(
+        child: Text('Messaging service not available'),
+      );
+    }
   }
 }
 
@@ -301,10 +319,21 @@ class _ConversationView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<MessagingStore>();
-    final conv = store.activeConversation;
+    try {
+      final store = context.watch<MessagingStore>();
+      final conv = store.activeConversation;
     if (conv == null || conv.id.isEmpty) {
-      return const Center(child: Text('No conversation'));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Ionicons.chatbubble_ellipses_outline, size: 64, color: AppColors.textSecondary),
+            SizedBox(height: 16),
+            Text('Select a conversation to start messaging', 
+                 style: TextStyle(color: AppColors.textSecondary)),
+          ],
+        ),
+      );
     }
     return Column(
       children: [
@@ -396,9 +425,27 @@ class _ConversationView extends StatelessWidget {
                           ),
                         ],
                         const SizedBox(height: 4),
-                        Text(_formatTime(m.sentAt),
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.textSecondary)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_formatTime(m.sentAt),
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.textSecondary)),
+                            if (m.isSending) ...[
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.textSecondary.withOpacity(0.6),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -411,6 +458,11 @@ class _ConversationView extends StatelessWidget {
         const _Composer(),
       ],
     );
+    } catch (e) {
+      return const Center(
+        child: Text('Messaging service not available'),
+      );
+    }
   }
 }
 
@@ -462,9 +514,16 @@ class _ComposerState extends State<_Composer> {
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty && _staged.isEmpty) return;
-    context
-        .read<MessagingStore>()
-        .sendMessage(text, attachments: List.of(_staged));
+    
+    final store = context.read<MessagingStore>();
+    if (store.activeConversationId == null || store.activeConversationId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a conversation first')),
+      );
+      return;
+    }
+    
+    store.sendMessage(text, attachments: List.of(_staged));
     _controller.clear();
     setState(() => _staged.clear());
   }
@@ -571,10 +630,16 @@ class _ComposerState extends State<_Composer> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _send,
-                  icon: const Icon(Ionicons.send_outline),
-                  color: AppColors.primary,
+                Consumer<MessagingStore>(
+                  builder: (context, store, child) {
+                    final hasActiveConversation = store.activeConversationId != null && 
+                                                store.activeConversationId!.isNotEmpty;
+                    return IconButton(
+                      onPressed: hasActiveConversation ? _send : null,
+                      icon: const Icon(Ionicons.send_outline),
+                      color: hasActiveConversation ? AppColors.primary : AppColors.textSecondary,
+                    );
+                  },
                 ),
               ],
             ),

@@ -3,6 +3,7 @@ import 'package:ionicons/ionicons.dart';
 import '../tokens.dart';
 import '../breakpoints.dart';
 import 'responsive_scaffold.dart';
+import '../../widgets/auto_hide_scaffold.dart';
 
 class AppShellScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
@@ -20,47 +21,55 @@ class AppShellScaffold extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= AppBreakpoints.desktop;
 
-    const destinations = <NavigationDestination>[
-      NavigationDestination(
+    final destinations = <NavigationDestination>[
+      const NavigationDestination(
         icon: Icon(Ionicons.home_outline),
         selectedIcon: Icon(Ionicons.home),
         label: 'Home',
       ),
-      NavigationDestination(
+      const NavigationDestination(
         icon: Icon(Ionicons.search_outline),
         selectedIcon: Icon(Ionicons.search),
         label: 'Search',
       ),
-      NavigationDestination(
-        icon: Icon(Ionicons.chatbubble_ellipses_outline),
-        selectedIcon: Icon(Ionicons.chatbubble_ellipses),
-        label: 'Messages',
-      ),
-      NavigationDestination(
-        icon: Icon(Ionicons.grid_outline),
-        selectedIcon: Icon(Ionicons.grid),
-        label: 'Categories',
-      ),
-      NavigationDestination(
+      if (isDesktop)
+        const NavigationDestination(
+          icon: Icon(Ionicons.chatbubble_ellipses_outline),
+          selectedIcon: Icon(Ionicons.chatbubble_ellipses),
+          label: 'Messages',
+        ),
+      if (isDesktop)
+        const NavigationDestination(
+          icon: Icon(Ionicons.grid_outline),
+          selectedIcon: Icon(Ionicons.grid),
+          label: 'Categories',
+        ),
+      const NavigationDestination(
         icon: Icon(Ionicons.storefront_outline),
         selectedIcon: Icon(Ionicons.storefront),
         label: 'Sell',
       ),
-      NavigationDestination(
+      const NavigationDestination(
         icon: Icon(Ionicons.earth_outline),
         selectedIcon: Icon(Ionicons.earth),
         label: 'State info',
       ),
-      NavigationDestination(
+      const NavigationDestination(
         icon: Icon(Ionicons.person_circle_outline),
         selectedIcon: Icon(Ionicons.person_circle),
         label: 'Profile',
       ),
     ];
 
+    // Map visible destination positions to page indices in ResponsiveScaffold
+    final List<int> indexMap = isDesktop
+        ? [0, 1, 2, 3, 4, 5, 6]
+        : [0, 1, 4, 5, 6]; // Home, Search, Sell, State, Profile
+
     void goToRoot(int i) {
+      final actualIndex = indexMap[i];
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => ResponsiveScaffold(initialIndex: i)),
+        MaterialPageRoute(builder: (_) => ResponsiveScaffold(initialIndex: actualIndex)),
         (route) => false,
       );
     }
@@ -121,12 +130,17 @@ class AppShellScaffold extends StatelessWidget {
       );
     }
 
-    return Scaffold(
+    // For mobile, map the selectedIndex to the correct position in the filtered destinations
+    final mobileSelectedIndex = isDesktop 
+        ? selectedIndex 
+        : indexMap.indexOf(selectedIndex);
+
+    return AutoHideScaffold(
       backgroundColor: AppColors.surface,
       appBar: appBar,
       body: body,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
+        selectedIndex: mobileSelectedIndex == -1 ? 0 : mobileSelectedIndex,
         onDestinationSelected: goToRoot,
         destinations: destinations,
       ),

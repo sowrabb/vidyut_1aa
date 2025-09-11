@@ -5,6 +5,8 @@ import '../../app/tokens.dart';
 import '../sell/models.dart';
 import '../leads/leads_store.dart';
 import '../leads/lead_detail_page.dart';
+import '../../services/demo_data_service.dart';
+import 'store/seller_store.dart';
 
 class LeadsPage extends StatelessWidget {
   const LeadsPage({super.key});
@@ -12,7 +14,7 @@ class LeadsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => LeadsStore(),
+      create: (context) => LeadsStore(context.read<DemoDataService>()),
       builder: (context, _) {
         final store = context.watch<LeadsStore>();
         return Scaffold(
@@ -92,7 +94,9 @@ class LeadsPage extends StatelessWidget {
                     phone: 1,
                     children: store.results
                         .map((l) => _LeadProfileCard(
-                            lead: l, onOpen: () => _open(context, l)))
+                            lead: l, 
+                            onOpen: () => _open(context, l),
+                            onQuote: () => _requestQuote(context, l)))
                         .toList(),
                   ),
 
@@ -114,15 +118,58 @@ class LeadsPage extends StatelessWidget {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => LeadDetailPage(lead: l)));
   }
+
+  void _requestQuote(BuildContext context, Lead lead) {
+    // Record lead contact for analytics
+    final sellerStore = context.read<SellerStore>();
+    sellerStore.recordLeadContact(lead.id, 'quote_request');
+
+    // Show quote request dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Request Quote for ${lead.title}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Company: ${lead.title}'),
+            Text('Industry: ${lead.industry}'),
+            Text('Location: ${lead.city}, ${lead.state}'),
+            Text('Turnover: ₹${lead.turnoverCr.toStringAsFixed(0)} Cr'),
+            const SizedBox(height: 16),
+            const Text('Your quote request has been recorded. The lead will be notified and may contact you directly.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Quote request sent successfully!')),
+              );
+            },
+            child: const Text('Send Quote Request'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LeadProfileCard extends StatelessWidget {
   final Lead lead;
   final VoidCallback onOpen;
+  final VoidCallback onQuote;
 
   const _LeadProfileCard({
     required this.lead,
     required this.onOpen,
+    required this.onQuote,
   });
 
   @override
@@ -261,7 +308,7 @@ class _LeadProfileCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () {},
+                      onPressed: onQuote,
                       icon: const Icon(Icons.message, size: 16),
                       label: const Text('Quote'),
                       style: FilledButton.styleFrom(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/image_upload_widget.dart';
 import '../sell/models.dart';
 import '../sell/widgets/materials_selector.dart';
 import '../sell/widgets/simple_custom_fields.dart';
@@ -7,6 +8,7 @@ import '../../app/tokens.dart';
 import '../../app/breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'store/admin_store.dart';
+import '../../services/demo_data_service.dart';
 // duplicates removed
 import '../sell/hub_shell.dart';
 import '../sell/product_form_page.dart';
@@ -16,6 +18,7 @@ import 'pages/hero_sections_page.dart';
 import 'pages/categories_management_page.dart';
 import 'pages/notifications_page.dart';
 import 'pages/subscription_management_page.dart';
+import 'pages/state_flow_admin_page.dart';
 
 /// Responsive header component for Admin Console pages
 class AdminPageHeader extends StatelessWidget {
@@ -125,7 +128,7 @@ class _AdminShellState extends State<AdminShell> with TickerProviderStateMixin {
         AdminItem(label: 'Categories', icon: Icons.category_outlined, page: _CategoriesManagementPage()),
         AdminItem(label: 'Messaging', icon: Icons.chat_bubble_outline, page: _MessagingPage()),
         AdminItem(label: 'Notifications', icon: Icons.notifications_none_outlined, page: NotificationsPage()),
-        AdminItem(label: 'State Info CMS', icon: Icons.map_outlined, page: _StateCmsPage()),
+        AdminItem(label: 'State Flow Manager', icon: Icons.electrical_services, page: const StateFlowAdminPage()),
       ],
     ),
     AdminCategory(
@@ -179,7 +182,7 @@ class _AdminShellState extends State<AdminShell> with TickerProviderStateMixin {
     final isDesktop = width >= AppBreakpoints.desktop;
 
     return ChangeNotifierProvider(
-      create: (_) => AdminStore(),
+      create: (context) => AdminStore(context.read<DemoDataService>()),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Admin Console'),
@@ -1130,7 +1133,26 @@ class _AdminUserProfileEditorState extends State<_AdminUserProfileEditor> {
                 Expanded(child: TextFormField(controller: address, decoration: const InputDecoration(labelText: 'Address'))),
               ]),
               const SizedBox(height: 8),
-              TextFormField(controller: bannerUrl, decoration: const InputDecoration(labelText: 'Banner URL')),
+              // Seller Banner Image
+              ImageUploadWidget(
+                currentImagePath: bannerUrl.text.isEmpty ? null : bannerUrl.text,
+                onImageSelected: (result) {
+                  setState(() {
+                    bannerUrl.text = result.path;
+                  });
+                },
+                onImageRemoved: (_) {
+                  setState(() {
+                    bannerUrl.clear();
+                  });
+                },
+                width: double.infinity,
+                height: 180,
+                label: 'Seller Banner Image',
+                hint: 'Upload a banner image (JPG/PNG/WebP, max 5MB) or leave empty',
+                showPreview: true,
+                allowMultipleSources: true,
+              ),
               const SizedBox(height: 12),
               MaterialsSelector(value: materials, onChanged: (v)=>setState(()=>materials = v), label: 'Materials'),
               const SizedBox(height: 12),
@@ -2041,7 +2063,7 @@ class _AdminProductEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => SellerStore()..addProduct(product),
+      create: (context) => SellerStore(context.read<DemoDataService>())..addProduct(product),
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.red.shade50,

@@ -6,9 +6,11 @@ import '../../app/tokens.dart';
 import '../../app/breakpoints.dart';
 import '../../app/app_state.dart';
 import '../search/search_store.dart';
-import '../sell/models.dart' hide kMaterials;
-import '../home/widgets/product_card.dart';
-import 'categories_page.dart';
+import '../sell/models.dart';
+import '../sell/store/seller_store.dart';
+import '../sell/product_detail_page.dart';
+import '../../widgets/responsive_product_grid.dart';
+import 'categories_page.dart' hide kMaterials;
 
 class CategoryDetailPage extends StatelessWidget {
   final CategoryData category;
@@ -21,21 +23,15 @@ class CategoryDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) {
-        // Create demo products for this category
-        final demoProducts = _generateDemoProductsForCategory(category);
-        final store = SearchStore(demoProducts);
+      create: (context) {
+        // Use real products from SellerStore
+        final sellerStore = context.read<SellerStore>();
+        final appState = context.read<AppState>();
+        final store = SearchStore(sellerStore.products, appState);
 
         // Pre-select this category
         store.selectedCategories.add(category.name);
-
-        // Sync location from AppState
-        final appState = context.read<AppState>();
-        store.setGeo(
-          city: appState.city,
-          state: appState.state,
-          radiusKm: appState.radiusKm,
-        );
+        
         return store;
       },
       builder: (context, _) {
@@ -77,7 +73,7 @@ class CategoryDetailPage extends StatelessWidget {
                                 child: _FiltersPanel(sticky: true),
                               ),
                               const SizedBox(width: 16),
-                              const Expanded(child: _ResultsGrid()),
+                              Expanded(child: _ResultsGrid(category: category)),
                             ],
                           ),
                         )
@@ -94,7 +90,7 @@ class CategoryDetailPage extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              const _ResultsGrid(),
+                              _ResultsGrid(category: category),
                             ],
                           ),
                         ),
@@ -337,46 +333,157 @@ class _FiltersPanel extends StatelessWidget {
 }
 
 class _ResultsGrid extends StatelessWidget {
-  const _ResultsGrid();
+  final CategoryData category;
+  
+  const _ResultsGrid({required this.category});
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<SearchStore>();
-    final w = MediaQuery.sizeOf(context).width;
 
-    final crossAxisCount = w >= AppBreakpoints.desktop
-        ? 4
-        : w >= AppBreakpoints.tablet
-            ? 3
-            : 2;
+    // Convert to ProductCardData
+    final productCards = store.results.map((product) {
+      return ProductCardData(
+        productId: product.id,
+        title: product.title,
+        brand: product.brand,
+        price: '₹${product.price.toStringAsFixed(0)}',
+        subtitle: product.subtitle,
+        imageUrl: 'https://picsum.photos/seed/${product.id}/800/600',
+        phone: '9000000000',
+        whatsappNumber: '9000000000',
+        rating: product.rating,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductDetailPage(product: product),
+            ),
+          );
+        },
+        onCallPressed: () {
+          context.read<SellerStore>().recordProductContactCall(product.id);
+        },
+        onWhatsAppPressed: () {
+          context.read<SellerStore>().recordProductContactWhatsapp(product.id);
+        },
+      );
+    }).toList();
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: store.results.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 0.75,
+    // Get ads for this category
+    final sellerStore = context.read<SellerStore>();
+    final relevantAds = sellerStore.ads.where((ad) {
+      if (ad.type == AdType.category) {
+        return ad.term.toLowerCase() == category.name.toLowerCase();
+      }
+      return false;
+    }).toList();
+
+    return Column(
+      children: [
+        // Show relevant ads at the top
+        if (relevantAds.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Sponsored Results',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...relevantAds.map((ad) => _AdResultCard(ad: ad)),
+          const SizedBox(height: 16),
+          Text(
+            'Regular Results',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        ResponsiveProductGrid(
+          products: productCards,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdResultCard extends StatelessWidget {
+  final AdCampaign ad;
+  
+  const _AdResultCard({required this.ad});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
       ),
-      itemBuilder: (context, index) {
-        final product = store.results[index];
-        return ProductCard(
-          productId: product.id,
-          title: product.title,
-          brand: product.brand,
-          price: '₹${product.price.toStringAsFixed(0)}',
-          subtitle: product.subtitle,
-          imageUrl: 'https://picsum.photos/seed/${product.id}/800/600',
-          phone: '9000000000',
-          whatsappNumber: '9000000000',
-          rating: product.rating,
-          onTap: () {
-            // Navigate to product detail page
-          },
-        );
-      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withOpacity(0.05),
+              AppColors.primary.withOpacity(0.02),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'AD',
+                style: t.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sponsored: ${ad.term}',
+                    style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Position #${ad.slot} • Category Campaign',
+                    style: t.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

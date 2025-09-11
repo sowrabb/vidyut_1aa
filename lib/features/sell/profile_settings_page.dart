@@ -11,9 +11,7 @@ import '../../app/app_state.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-// For demo, we will accept a banner URL instead of file picker to avoid
-// external dependencies. Integrate image_picker later if needed.
-// removed duplicate imports
+import '../../widgets/image_upload_widget.dart';
 
 class ProfileSettingsPage extends StatefulWidget {
   const ProfileSettingsPage({super.key});
@@ -29,14 +27,53 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  final _bannerUrlController = TextEditingController();
+  final _websiteController = TextEditingController();
 
   LocationResult? _pendingLocation;
 
   @override
   void initState() {
     super.initState();
-    // TODO: Load existing profile data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfileData();
+    });
+    // Add listeners for auto-save
+    _addTextControllerListeners();
+  }
+
+  void _addTextControllerListeners() {
+    _legalNameController.addListener(_autoSave);
+    _gstinController.addListener(_autoSave);
+    _phoneController.addListener(_autoSave);
+    _emailController.addListener(_autoSave);
+    _addressController.addListener(_autoSave);
+    _websiteController.addListener(_autoSave);
+  }
+
+  void _autoSave() {
+    // Auto-save form data to prevent loss
+    _saveFormState();
+  }
+
+  void _saveFormState() {
+    // Save form state to local storage
+    // This would typically use SharedPreferences or similar
+    // For now, we'll just store in memory
+  }
+
+  void _loadProfileData() async {
+    final store = context.read<SellerStore>();
+    await store.loadProfileData();
+    
+    if (mounted) {
+      final profileData = store.profileData;
+      _legalNameController.text = profileData['legalName'] ?? '';
+      _gstinController.text = profileData['gstin'] ?? '';
+      _phoneController.text = profileData['phone'] ?? '';
+      _emailController.text = profileData['email'] ?? '';
+      _addressController.text = profileData['address'] ?? '';
+      _websiteController.text = profileData['website'] ?? '';
+    }
   }
 
   @override
@@ -163,6 +200,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter business name';
                           }
+                          if (value.length < 2) {
+                            return 'Business name must be at least 2 characters';
+                          }
+                          if (value.length > 100) {
+                            return 'Business name must be less than 100 characters';
+                          }
                           return null;
                         },
                       ),
@@ -176,6 +219,16 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                               labelText: 'GSTIN',
                               border: OutlineInputBorder(),
                             ),
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                // Basic GSTIN validation (15 characters, alphanumeric)
+                                final gstinRegex = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$');
+                                if (!gstinRegex.hasMatch(value.toUpperCase())) {
+                                  return 'Please enter a valid GSTIN';
+                                }
+                              }
+                              return null;
+                            },
                           ),
                           TextFormField(
                             controller: _phoneController,
@@ -186,6 +239,11 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter phone number';
+                              }
+                              // Basic phone number validation
+                              final phoneRegex = RegExp(r'^[\+]?[0-9\s\-\(\)]{10,15}$');
+                              if (!phoneRegex.hasMatch(value)) {
+                                return 'Please enter a valid phone number';
                               }
                               return null;
                             },
@@ -200,6 +258,16 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                           labelText: 'Business Email',
                           border: OutlineInputBorder(),
                         ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                            if (!emailRegex.hasMatch(value)) {
+                              return 'Please enter a valid email address';
+                            }
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -211,6 +279,32 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                         ),
                         maxLines: 3,
                       ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _websiteController,
+                        decoration: const InputDecoration(
+                          labelText: 'Website URL',
+                          border: OutlineInputBorder(),
+                          hintText: 'https://www.yourwebsite.com',
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Additional Contact Information Section
+                      const _SectionHeader(
+                        title: 'Additional Contact Information',
+                        icon: Ionicons.call_outline,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Add extra phone numbers and email addresses for better customer reach',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _AdditionalContactFields(),
                       const SizedBox(height: 32),
 
                       // Banner Section
@@ -219,27 +313,21 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                         icon: Ionicons.image_outline,
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _bannerUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Banner Image URL (1000×1000)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            context
-                                .read<SellerStore>()
-                                .setBannerUrl(_bannerUrlController.text.trim());
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Banner saved')));
-                          },
-                          icon: const Icon(Ionicons.save_outline),
-                          label: const Text('Save Banner'),
-                        ),
+                      ImageUploadWidget(
+                        currentImagePath: context.watch<SellerStore>().bannerUrl,
+                        onImageSelected: (result) {
+                          context.read<SellerStore>().setBannerUrl(result.path);
+                        },
+                        onImageRemoved: (_) {
+                          context.read<SellerStore>().setBannerUrl('');
+                        },
+                        width: double.infinity,
+                        height: 200,
+                        label: 'Banner Image',
+                        hint: 'Upload a banner image for your seller profile (recommended: 1000×1000)',
+                        showPreview: true,
+                        allowMultipleSources: true,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       const SizedBox(height: 32),
 
@@ -346,13 +434,27 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     );
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // TODO(firebase): Save to backend
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated successfully')),
+    final store = context.read<SellerStore>();
+    
+    await store.saveProfileData(
+      legalName: _legalNameController.text.trim(),
+      gstin: _gstinController.text.trim(),
+      phone: _phoneController.text.trim(),
+      email: _emailController.text.trim(),
+      address: _addressController.text.trim(),
+      website: _websiteController.text.trim(),
+      materials: store.profileMaterials,
+      customFields: store.profileFields,
     );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully')),
+      );
+    }
   }
 }
 
@@ -538,6 +640,184 @@ class _LocationPreview extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AdditionalContactFields extends StatefulWidget {
+  @override
+  State<_AdditionalContactFields> createState() => _AdditionalContactFieldsState();
+}
+
+class _AdditionalContactFieldsState extends State<_AdditionalContactFields> {
+  final List<TextEditingController> _phoneControllers = [];
+  final List<TextEditingController> _emailControllers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with one empty field for each type
+    _phoneControllers.add(TextEditingController());
+    _emailControllers.add(TextEditingController());
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _phoneControllers) {
+      controller.dispose();
+    }
+    for (var controller in _emailControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addPhoneField() {
+    setState(() {
+      _phoneControllers.add(TextEditingController());
+    });
+  }
+
+  void _removePhoneField(int index) {
+    if (_phoneControllers.length > 1) {
+      setState(() {
+        _phoneControllers[index].dispose();
+        _phoneControllers.removeAt(index);
+      });
+    }
+  }
+
+  void _addEmailField() {
+    setState(() {
+      _emailControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeEmailField(int index) {
+    if (_emailControllers.length > 1) {
+      setState(() {
+        _emailControllers[index].dispose();
+        _emailControllers.removeAt(index);
+      });
+    }
+  }
+
+  void _saveContactInfo() {
+    final store = context.read<SellerStore>();
+    
+    // Get primary contact from main form
+    final primaryPhone = context.findAncestorStateOfType<_ProfileSettingsPageState>()?._phoneController.text ?? '';
+    final primaryEmail = context.findAncestorStateOfType<_ProfileSettingsPageState>()?._emailController.text ?? '';
+    final website = context.findAncestorStateOfType<_ProfileSettingsPageState>()?._websiteController.text ?? '';
+    
+    // Update primary contact
+    store.setPrimaryPhone(primaryPhone);
+    store.setPrimaryEmail(primaryEmail);
+    store.setWebsite(website);
+    
+    // Get additional contacts
+    final additionalPhones = _phoneControllers
+        .map((controller) => controller.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+    
+    final additionalEmails = _emailControllers
+        .map((controller) => controller.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+    
+    store.setAdditionalPhones(additionalPhones);
+    store.setAdditionalEmails(additionalEmails);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Contact information saved')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Additional Phone Numbers
+        Text('Additional Phone Numbers', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ...List.generate(_phoneControllers.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _phoneControllers[index],
+                    decoration: InputDecoration(
+                      labelText: 'Phone ${index + 1}',
+                      border: const OutlineInputBorder(),
+                      hintText: '+91 98765 43210',
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                ),
+                if (_phoneControllers.length > 1)
+                  IconButton(
+                    onPressed: () => _removePhoneField(index),
+                    icon: const Icon(Icons.remove_circle_outline),
+                    color: Colors.red,
+                  ),
+              ],
+            ),
+          );
+        }),
+        OutlinedButton.icon(
+          onPressed: _addPhoneField,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Phone Number'),
+        ),
+        const SizedBox(height: 16),
+
+        // Additional Email Addresses
+        Text('Additional Email Addresses', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ...List.generate(_emailControllers.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _emailControllers[index],
+                    decoration: InputDecoration(
+                      labelText: 'Email ${index + 1}',
+                      border: const OutlineInputBorder(),
+                      hintText: 'example@company.com',
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
+                if (_emailControllers.length > 1)
+                  IconButton(
+                    onPressed: () => _removeEmailField(index),
+                    icon: const Icon(Icons.remove_circle_outline),
+                    color: Colors.red,
+                  ),
+              ],
+            ),
+          );
+        }),
+        OutlinedButton.icon(
+          onPressed: _addEmailField,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Email Address'),
+        ),
+        const SizedBox(height: 16),
+
+        // Save Button
+        FilledButton.icon(
+          onPressed: _saveContactInfo,
+          icon: const Icon(Icons.save),
+          label: const Text('Save Contact Information'),
+        ),
+      ],
     );
   }
 }

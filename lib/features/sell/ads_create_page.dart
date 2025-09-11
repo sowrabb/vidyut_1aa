@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import 'store/seller_store.dart';
+import 'models.dart';
 
 class AdsCreatePage extends StatefulWidget {
   const AdsCreatePage({super.key});

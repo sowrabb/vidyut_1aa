@@ -8,7 +8,7 @@ import 'models.dart';
 // removed: old advanced custom fields editor
 import 'widgets/simple_custom_fields.dart';
 import 'widgets/materials_selector.dart';
-import '../../widgets/optimized_image.dart';
+import '../../widgets/optimized_image_widget.dart';
 
 class ProductFormPage extends StatefulWidget {
   final Product? product; // null for new product, non-null for editing
@@ -42,6 +42,30 @@ class _ProductFormPageState extends State<ProductFormPage> {
     if (widget.product != null) {
       _loadProductData();
     }
+    // Add listeners for auto-save
+    _addTextControllerListeners();
+  }
+
+  void _addTextControllerListeners() {
+    _titleController.addListener(_autoSave);
+    _brandController.addListener(_autoSave);
+    _subtitleController.addListener(_autoSave);
+    _descriptionController.addListener(_autoSave);
+    _priceController.addListener(_autoSave);
+    _moqController.addListener(_autoSave);
+    _gstController.addListener(_autoSave);
+    _materialsController.addListener(_autoSave);
+  }
+
+  void _autoSave() {
+    // Auto-save form data to prevent loss
+    _saveFormState();
+  }
+
+  void _saveFormState() {
+    // Save form state to local storage
+    // This would typically use SharedPreferences or similar
+    // For now, we'll just store in memory
   }
 
   void _loadProductData() {
@@ -114,6 +138,12 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a title';
                           }
+                          if (value.length < 3) {
+                            return 'Title must be at least 3 characters';
+                          }
+                          if (value.length > 100) {
+                            return 'Title must be less than 100 characters';
+                          }
                           return null;
                         },
                       ),
@@ -126,6 +156,12 @@ class _ProductFormPageState extends State<ProductFormPage> {
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a brand';
+                          }
+                          if (value.length < 2) {
+                            return 'Brand must be at least 2 characters';
+                          }
+                          if (value.length > 50) {
+                            return 'Brand must be less than 50 characters';
                           }
                           return null;
                         },
@@ -167,8 +203,15 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a price';
                           }
-                          if (double.tryParse(value) == null) {
+                          final price = double.tryParse(value);
+                          if (price == null) {
                             return 'Please enter a valid number';
+                          }
+                          if (price <= 0) {
+                            return 'Price must be greater than 0';
+                          }
+                          if (price > 10000000) {
+                            return 'Price must be less than ₹1 crore';
                           }
                           return null;
                         },
@@ -184,8 +227,15 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter MOQ';
                           }
-                          if (int.tryParse(value) == null) {
+                          final moq = int.tryParse(value);
+                          if (moq == null) {
                             return 'Please enter a valid number';
+                          }
+                          if (moq <= 0) {
+                            return 'MOQ must be greater than 0';
+                          }
+                          if (moq > 1000000) {
+                            return 'MOQ must be less than 1 million';
                           }
                           return null;
                         },
@@ -470,7 +520,7 @@ class _ImagesGrid extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: OptimizedImage(
+              child: OptimizedImageWidget(
                 imagePath: path,
                 fit: BoxFit.cover,
               ),

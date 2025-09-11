@@ -5,7 +5,7 @@ import '../../app/app_state.dart';
 import '../sell/models.dart';
 import '../sell/store/seller_store.dart';
 import 'search_store.dart';
-import '../home/widgets/product_card.dart';
+import '../../widgets/responsive_product_grid.dart';
 import '../sell/product_detail_page.dart';
 import '../../app/tokens.dart';
 import '../sell/seller_page.dart';
@@ -34,14 +34,8 @@ class _SearchPageState extends State<SearchPage> {
     return ChangeNotifierProvider(
       create: (_) {
         final sellerStore = context.read<SellerStore>();
-        final store = SearchStore(sellerStore.products);
-        // Sync location from AppState
         final appState = context.read<AppState>();
-        store.setGeo(
-          city: appState.city,
-          state: appState.state,
-          radiusKm: appState.radiusKm,
-        );
+        final store = SearchStore(sellerStore.products, appState);
         if (widget.initialMode != null) {
           store.setMode(widget.initialMode!);
         }
@@ -298,40 +292,75 @@ class _ResultsGrid extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (_, bc) {
-        // Use same visual density as home products grid
-        final w = bc.maxWidth;
-        final isDesktop = w >= AppBreaks.desktop;
-        final isTablet = w >= AppBreaks.tablet && w < AppBreaks.desktop;
-        final crossAxisExtent =
-            isDesktop ? AppLayout.productCardMax : (isTablet ? 300.0 : 280.0);
-        final childAspect = isDesktop ? 0.80 : 0.74;
+    // Convert to ProductCardData
+    final productCards = list.map((product) {
+      return ProductCardData(
+        productId: product.id,
+        title: product.title,
+        brand: product.brand,
+        price: '₹${product.price.toStringAsFixed(0)}',
+        subtitle: product.subtitle,
+        imageUrl: 'https://picsum.photos/seed/${product.id}/800/600',
+        phone: '9000000000',
+        whatsappNumber: '9000000000',
+        rating: product.rating,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductDetailPage(product: product),
+            ),
+          );
+        },
+        onCallPressed: () {
+          context.read<SellerStore>().recordProductContactCall(product.id);
+        },
+        onWhatsAppPressed: () {
+          context.read<SellerStore>().recordProductContactWhatsapp(product.id);
+        },
+      );
+    }).toList();
 
-        return GridView.builder(
+    // Get ads for this search query
+    final sellerStore = context.read<SellerStore>();
+    final searchStore = context.read<SearchStore>();
+    final relevantAds = sellerStore.ads.where((ad) {
+      if (ad.type == AdType.search) {
+        return ad.term.toLowerCase().contains(searchStore.query.toLowerCase()) ||
+               searchStore.query.toLowerCase().contains(ad.term.toLowerCase());
+      }
+      return false;
+    }).toList();
+
+    return Column(
+      children: [
+        // Show relevant ads at the top
+        if (relevantAds.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Sponsored Results',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...relevantAds.map((ad) => _AdResultCard(ad: ad)),
+          const SizedBox(height: 16),
+          Text(
+            'Regular Results',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        ResponsiveProductGrid(
+          products: productCards,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: list.length,
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: crossAxisExtent,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: childAspect,
-          ),
-          itemBuilder: (_, i) {
-            return ProductCard.demo(
-              index: i,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ProductDetailPage(product: list[i]),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -419,6 +448,82 @@ class _B2BProfileCard extends StatelessWidget {
               ]),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdResultCard extends StatelessWidget {
+  final AdCampaign ad;
+  
+  const _AdResultCard({required this.ad});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withOpacity(0.05),
+              AppColors.primary.withOpacity(0.02),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'AD',
+                style: t.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sponsored: ${ad.term}',
+                    style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Position #${ad.slot} • Search Campaign',
+                    style: t.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+          ],
         ),
       ),
     );

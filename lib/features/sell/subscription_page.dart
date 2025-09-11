@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../features/admin/store/admin_store.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
+import 'store/seller_store.dart';
 
 class SubscriptionPage extends StatelessWidget {
   const SubscriptionPage({super.key});
@@ -32,6 +33,64 @@ class SubscriptionPage extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 32),
+
+                // Current Plan Status
+                Consumer<SellerStore>(builder: (context, sellerStore, _) {
+                  return Card(
+                    elevation: AppElevation.level1,
+                    shadowColor: AppColors.shadowSoft,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: AppColors.outlineSoft),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.account_circle,
+                                color: AppColors.primary,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                sellerStore.getSubscriptionStatus(),
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('Current Usage:'),
+                          const SizedBox(height: 8),
+                          ...sellerStore.getSubscriptionLimits().entries.map((entry) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
+                                children: [
+                                  Text('• ${entry.key}: '),
+                                  Text(
+                                    entry.value.toString(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 24),
 
                 // Plans Grid
                 Consumer<AdminStore>(builder: (context, store, _) {
@@ -113,12 +172,33 @@ class SubscriptionPage extends StatelessWidget {
   }
 
   void _showUpgradeDialog(BuildContext context, String plan) {
+    final sellerStore = context.read<SellerStore>();
+    final planKey = plan.toLowerCase();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Upgrade to $plan'),
-        content: const Text(
-            'Payment integration will be implemented in the next phase. For now, this is a demo of the subscription flow.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+                'Payment integration will be implemented in the next phase. For now, this is a demo of the subscription flow.'),
+            const SizedBox(height: 16),
+            Text(
+              'New Limits:',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('• Products: ${_getProductLimit(planKey)}'),
+            Text('• Ads: ${_getAdLimit(planKey)}'),
+            Text('• Analytics: ${planKey == 'free' ? 'Disabled' : 'Enabled'}'),
+            if (planKey == 'pro') const Text('• Advanced Features: Enabled'),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -126,16 +206,35 @@ class SubscriptionPage extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
+              sellerStore.updateSubscriptionPlan(planKey);
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$plan plan selected (demo)')),
+                SnackBar(content: Text('Successfully upgraded to $plan plan!')),
               );
             },
-            child: const Text('Continue'),
+            child: const Text('Upgrade'),
           ),
         ],
       ),
     );
+  }
+
+  String _getProductLimit(String plan) {
+    switch (plan) {
+      case 'free': return '5 products';
+      case 'plus': return '25 products';
+      case 'pro': return '100 products';
+      default: return '5 products';
+    }
+  }
+
+  String _getAdLimit(String plan) {
+    switch (plan) {
+      case 'free': return '1 ad';
+      case 'plus': return '5 ads';
+      case 'pro': return '20 ads';
+      default: return '1 ad';
+    }
   }
 }
 
