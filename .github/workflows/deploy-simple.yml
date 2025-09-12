@@ -1,0 +1,49 @@
+name: Deploy Pre-built Flutter Web to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if build/web exists
+        id: check_build
+        run: |
+          if [ -d "build/web" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Build directory found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Build directory not found"
+          fi
+
+      - name: Build Flutter web (if needed)
+        if: steps.check_build.outputs.exists == 'false'
+        run: |
+          # Install Flutter
+          git clone https://github.com/flutter/flutter.git -b stable
+          export PATH="$PATH:$PWD/flutter/bin"
+          flutter --version
+          flutter config --enable-web
+          flutter pub get
+          flutter build web --release --base-href "/vidyutnidhi/"
+
+      - name: Add SPA fallback
+        run: cp build/web/index.html build/web/404.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          force_orphan: true
