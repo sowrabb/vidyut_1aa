@@ -71,6 +71,7 @@ class ResponsiveRow extends StatelessWidget {
   final int desktop;
   final int tablet;
   final int phone;
+  final bool useFieldMaxWidth;
   const ResponsiveRow({
     super.key,
     required this.children,
@@ -78,6 +79,7 @@ class ResponsiveRow extends StatelessWidget {
     this.desktop = 2,
     this.tablet = 2,
     this.phone = 1,
+    this.useFieldMaxWidth = true,
   });
 
   @override
@@ -89,8 +91,9 @@ class ResponsiveRow extends StatelessWidget {
         spacing: gap,
         runSpacing: gap,
         children: children.map((w) {
-          final maxW = math.min(cw, context.fieldMaxWidth);
-          return SizedBox(width: maxW, child: w);
+          final targetWidth =
+              useFieldMaxWidth ? math.min(cw, context.fieldMaxWidth) : cw;
+          return SizedBox(width: targetWidth, child: w);
         }).toList(),
       );
     });

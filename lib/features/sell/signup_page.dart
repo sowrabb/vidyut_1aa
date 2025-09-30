@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/provider_registry.dart';
+import '../admin/models/admin_user.dart';
 
 class SellerSignupPage extends StatefulWidget {
   const SellerSignupPage({super.key});
@@ -104,37 +107,45 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
   }
 
   Widget _planStep(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Choose a plan', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 12),
-      LayoutBuilder(builder: (context, bc) {
-        final isPhone = bc.maxWidth < AppBreaks.tablet;
-        final cards = [
-          _planCard('Plus', 'Essential features for SMBs', '₹499/mo'),
-          _planCard('Pro', 'Advanced tools and analytics', '₹999/mo'),
-        ];
-        return isPhone
-            ? Column(
-                children: cards
-                    .map((w) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12), child: w))
-                    .toList())
-            : Row(
-                children: cards
-                    .map((w) => Expanded(
-                        child: Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: w)))
-                    .toList());
-      }),
-      const SizedBox(height: 16),
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton(
-            onPressed: () => setState(() => _step = 2),
-            child: const Text('Next')),
-      )
-    ]);
+    return Consumer(builder: (context, ref, _) {
+      final adminStore = ref.watch(adminStoreProvider);
+      final plans = adminStore.planCards; // source of truth
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Choose a plan', style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 12),
+        LayoutBuilder(builder: (context, bc) {
+          final isPhone = bc.maxWidth < AppBreaks.tablet;
+          final cards = plans
+              .map((c) => _planCard(
+                  c.title,
+                  c.features.join(' • '),
+                  c.periodLabel.isNotEmpty
+                      ? '${c.priceLabel}/${c.periodLabel}'
+                      : c.priceLabel))
+              .toList();
+          return isPhone
+              ? Column(
+                  children: cards
+                      .map((w) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12), child: w))
+                      .toList())
+              : Row(
+                  children: cards
+                      .map((w) => Expanded(
+                          child: Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: w)))
+                      .toList());
+        }),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton(
+              onPressed: () => setState(() => _step = 2),
+              child: const Text('Next')),
+        )
+      ]);
+    });
   }
 
   Widget _planCard(String name, String desc, String price) {
@@ -259,6 +270,21 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
                     content: Text('PAN and Aadhaar are required')));
                 return;
               }
+              // Demo: auto-approve via EnhancedAdminStore and update seller store plan
+              final container = ProviderScope.containerOf(context);
+              final enhancedAdmin = container.read(enhancedAdminStoreProvider);
+              final sellerStore = container.read(sellerStoreProvider);
+              // Set chosen plan on seller store (lowercase code)
+              final planCode = _plan.toLowerCase();
+              sellerStore.updateSubscriptionPlan(planCode);
+              // Auto-approve first pending seller in demo (safe fallback)
+              final pending = enhancedAdmin.sellers.firstWhere(
+                  (u) => u.status == UserStatus.pending,
+                  orElse: () => enhancedAdmin.sellers.isNotEmpty
+                      ? enhancedAdmin.sellers.first
+                      : (throw Exception('No sellers present in demo data')));
+              enhancedAdmin.approveSeller(pending.id,
+                  comments: 'Auto-approved from signup flow');
               setState(() => _step = 4);
             },
             child: const Text('Upload & Submit')),
@@ -317,9 +343,9 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: AppColors.outlineSoft)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: const [
+        child: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.access_time, size: 56, color: AppColors.textSecondary),
             SizedBox(height: 12),
             Text('Waiting for admin approval',

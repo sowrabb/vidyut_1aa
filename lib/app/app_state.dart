@@ -11,18 +11,18 @@ class AppState extends ChangeNotifier {
   double? latitude;
   double? longitude;
   bool isAdmin = false;
-  
+
   // Callback system for location changes
   final List<VoidCallback> _locationChangeListeners = [];
-  
+
   void addLocationChangeListener(VoidCallback listener) {
     _locationChangeListeners.add(listener);
   }
-  
+
   void removeLocationChangeListener(VoidCallback listener) {
     _locationChangeListeners.remove(listener);
   }
-  
+
   void _notifyLocationChange() {
     for (final listener in _locationChangeListeners) {
       listener();
@@ -38,12 +38,12 @@ class AppState extends ChangeNotifier {
     double? latitude,
     double? longitude,
   }) {
-    final bool locationChanged = this.city != city || 
-        this.state != state || 
+    final bool locationChanged = this.city != city ||
+        this.state != state ||
         this.radiusKm != radiusKm ||
         this.latitude != latitude ||
         this.longitude != longitude;
-        
+
     this.city = city;
     this.area = area ?? this.area;
     this.state = state;
@@ -51,14 +51,14 @@ class AppState extends ChangeNotifier {
     this.mode = mode ?? this.mode;
     this.latitude = latitude;
     this.longitude = longitude;
-    
+
     notifyListeners();
-    
+
     if (locationChanged) {
       _notifyLocationChange();
     }
   }
-  
+
   void setCity(String city) {
     if (this.city != city) {
       this.city = city;
@@ -66,7 +66,7 @@ class AppState extends ChangeNotifier {
       _notifyLocationChange();
     }
   }
-  
+
   void setState(String state) {
     if (this.state != state) {
       this.state = state;
@@ -74,7 +74,7 @@ class AppState extends ChangeNotifier {
       _notifyLocationChange();
     }
   }
-  
+
   void setRadius(double radiusKm) {
     if (this.radiusKm != radiusKm) {
       this.radiusKm = radiusKm;

@@ -3,14 +3,14 @@ import '../../../app/breakpoints.dart';
 
 /// Responsive layout utilities following Material Design guidelines
 class ResponsiveLayout {
-  static bool isMobile(BuildContext context) => 
+  static bool isMobile(BuildContext context) =>
       MediaQuery.of(context).size.width < AppBreakpoints.tablet;
-  
-  static bool isTablet(BuildContext context) => 
-      MediaQuery.of(context).size.width >= AppBreakpoints.tablet && 
+
+  static bool isTablet(BuildContext context) =>
+      MediaQuery.of(context).size.width >= AppBreakpoints.tablet &&
       MediaQuery.of(context).size.width < AppBreakpoints.desktop;
-  
-  static bool isDesktop(BuildContext context) => 
+
+  static bool isDesktop(BuildContext context) =>
       MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
 
   /// Get appropriate column count based on screen size
@@ -29,9 +29,9 @@ class ResponsiveLayout {
 
   /// Get appropriate padding based on screen size
   static EdgeInsets getScreenPadding(BuildContext context) {
-    if (isMobile(context)) return const EdgeInsets.all(16);
-    if (isTablet(context)) return const EdgeInsets.all(20);
-    return const EdgeInsets.all(24);
+    if (isMobile(context)) return const EdgeInsets.all(12);
+    if (isTablet(context)) return const EdgeInsets.all(16);
+    return const EdgeInsets.all(20);
   }
 
   /// Get appropriate content margin
@@ -160,7 +160,8 @@ class ResponsiveGrid extends StatelessWidget {
       crossAxisCount: ResponsiveLayout.getGridColumns(context),
       crossAxisSpacing: spacing,
       mainAxisSpacing: runSpacing,
-      childAspectRatio: childAspectRatio ?? ResponsiveLayout.getCardAspectRatio(context),
+      childAspectRatio:
+          childAspectRatio ?? ResponsiveLayout.getCardAspectRatio(context),
       children: children,
     );
   }
@@ -190,8 +191,8 @@ class ResponsiveAppBar extends StatelessWidget implements PreferredSizeWidget {
         title: Text(
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+                fontWeight: FontWeight.w500,
+              ),
         ),
         leading: leading,
         automaticallyImplyLeading: automaticallyImplyLeading,
@@ -283,13 +284,13 @@ class _MobileNavigationButtons extends StatelessWidget {
         if (onNext != null)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: FilledButton.icon(
               onPressed: onNext,
               icon: const Icon(Icons.arrow_forward),
               label: Text(nextLabel ?? 'Next'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
@@ -298,7 +299,7 @@ class _MobileNavigationButtons extends StatelessWidget {
         if (onBack != null || onStartOver != null)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
               children: [
                 if (onBack != null) ...[
@@ -308,11 +309,11 @@ class _MobileNavigationButtons extends StatelessWidget {
                       icon: const Icon(Icons.arrow_back),
                       label: Text(backLabel ?? 'Back'),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  if (onStartOver != null) const SizedBox(width: 12),
+                  if (onStartOver != null) const SizedBox(width: 8),
                 ],
                 if (onStartOver != null)
                   Expanded(
@@ -321,7 +322,7 @@ class _MobileNavigationButtons extends StatelessWidget {
                       icon: const Icon(Icons.home),
                       label: const Text('Start Over'),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -386,4 +387,3 @@ class _DesktopNavigationButtons extends StatelessWidget {
     );
   }
 }
-

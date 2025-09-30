@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
-import 'store/seller_store.dart';
+import '../../../app/provider_registry.dart';
 import 'widgets/simple_custom_fields.dart';
 import 'widgets/materials_selector.dart';
 import '../home/widgets/location_picker.dart';
-import '../../app/app_state.dart';
+import '../../state/location/location_state.dart' as loc;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/image_upload_widget.dart';
 
-class ProfileSettingsPage extends StatefulWidget {
+class ProfileSettingsPage extends ConsumerStatefulWidget {
   const ProfileSettingsPage({super.key});
 
   @override
-  State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
+  ConsumerState<ProfileSettingsPage> createState() =>
+      _ProfileSettingsPageState();
 }
 
-class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
+class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
   final _formKey = GlobalKey<FormState>();
   final _legalNameController = TextEditingController();
   final _gstinController = TextEditingController();
@@ -37,34 +38,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProfileData();
     });
-    // Add listeners for auto-save
-    _addTextControllerListeners();
-  }
-
-  void _addTextControllerListeners() {
-    _legalNameController.addListener(_autoSave);
-    _gstinController.addListener(_autoSave);
-    _phoneController.addListener(_autoSave);
-    _emailController.addListener(_autoSave);
-    _addressController.addListener(_autoSave);
-    _websiteController.addListener(_autoSave);
-  }
-
-  void _autoSave() {
-    // Auto-save form data to prevent loss
-    _saveFormState();
-  }
-
-  void _saveFormState() {
-    // Save form state to local storage
-    // This would typically use SharedPreferences or similar
-    // For now, we'll just store in memory
   }
 
   void _loadProfileData() async {
-    final store = context.read<SellerStore>();
+    final store = ProviderScope.containerOf(context).read(sellerStoreProvider);
     await store.loadProfileData();
-    
+
     if (mounted) {
       final profileData = store.profileData;
       _legalNameController.text = profileData['legalName'] ?? '';
@@ -88,8 +67,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SellerStore>(
-      builder: (context, store, child) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final store = ref.watch(sellerStoreProvider);
         return Scaffold(
           body: SafeArea(
             child: ContentClamp(
@@ -127,6 +107,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       Builder(builder: (context) {
                         return OutlinedButton.icon(
                           onPressed: () async {
+                            final location =
+                                ref.read(locationControllerProvider);
+                            final messenger = ScaffoldMessenger.of(context);
                             final res =
                                 await showModalBottomSheet<LocationResult>(
                               context: context,
@@ -135,18 +118,19 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                               builder: (ctx) => Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: LocationPicker(
-                                  city: context.read<AppState>().city,
-                                  state: context.read<AppState>().state,
-                                  radiusKm: context.read<AppState>().radiusKm,
+                                  city: location.city,
+                                  state: location.stateName,
+                                  radiusKm: location.radiusKm,
                                 ),
                               ),
                             );
                             if (!mounted) return;
                             if (res != null) {
                               setState(() => _pendingLocation = res);
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 const SnackBar(
-                                    content: Text('Preview your new location, then confirm to save')),
+                                    content: Text(
+                                        'Preview your new location, then confirm to save')),
                               );
                             }
                           },
@@ -163,20 +147,24 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                           },
                           onConfirm: () async {
                             final res = _pendingLocation!;
-                            context.read<AppState>().setLocation(
-                                  city: res.city,
-                                  state: res.state,
-                                  radiusKm: res.radiusKm,
-                                  mode: res.isAuto
-                                      ? LocationMode.auto
-                                      : LocationMode.manual,
-                                  latitude: res.latitude,
-                                  longitude: res.longitude,
-                                );
+                            final notifier = ref.read(
+                                locationControllerProvider.notifier);
+                            final messenger = ScaffoldMessenger.of(context);
+                            notifier.setLocation(
+                              city: res.city,
+                              stateName: res.state,
+                              radiusKm: res.radiusKm,
+                              mode: res.isAuto
+                                  ? loc.LocationMode.auto
+                                  : loc.LocationMode.manual,
+                              latitude: res.latitude,
+                              longitude: res.longitude,
+                            );
                             if (!mounted) return;
                             setState(() => _pendingLocation = null);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Business location updated')),
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                  content: Text('Business location updated')),
                             );
                           },
                         ),
@@ -200,12 +188,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter business name';
                           }
-                          if (value.length < 2) {
-                            return 'Business name must be at least 2 characters';
-                          }
-                          if (value.length > 100) {
-                            return 'Business name must be less than 100 characters';
-                          }
                           return null;
                         },
                       ),
@@ -219,16 +201,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                               labelText: 'GSTIN',
                               border: OutlineInputBorder(),
                             ),
-                            validator: (value) {
-                              if (value != null && value.isNotEmpty) {
-                                // Basic GSTIN validation (15 characters, alphanumeric)
-                                final gstinRegex = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$');
-                                if (!gstinRegex.hasMatch(value.toUpperCase())) {
-                                  return 'Please enter a valid GSTIN';
-                                }
-                              }
-                              return null;
-                            },
                           ),
                           TextFormField(
                             controller: _phoneController,
@@ -239,11 +211,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter phone number';
-                              }
-                              // Basic phone number validation
-                              final phoneRegex = RegExp(r'^[\+]?[0-9\s\-\(\)]{10,15}$');
-                              if (!phoneRegex.hasMatch(value)) {
-                                return 'Please enter a valid phone number';
                               }
                               return null;
                             },
@@ -258,16 +225,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                           labelText: 'Business Email',
                           border: OutlineInputBorder(),
                         ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                            if (!emailRegex.hasMatch(value)) {
-                              return 'Please enter a valid email address';
-                            }
-                          }
-                          return null;
-                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -300,8 +257,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       Text(
                         'Add extra phone numbers and email addresses for better customer reach',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                              color: AppColors.textSecondary,
+                            ),
                       ),
                       const SizedBox(height: 16),
                       _AdditionalContactFields(),
@@ -314,17 +271,23 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       ),
                       const SizedBox(height: 12),
                       ImageUploadWidget(
-                        currentImagePath: context.watch<SellerStore>().bannerUrl,
+                        currentImagePath:
+                            ref.watch(sellerStoreProvider).bannerUrl,
                         onImageSelected: (result) {
-                          context.read<SellerStore>().setBannerUrl(result.path);
+                          ProviderScope.containerOf(context)
+                              .read(sellerStoreProvider)
+                              .setBannerUrl(result.path);
                         },
                         onImageRemoved: (_) {
-                          context.read<SellerStore>().setBannerUrl('');
+                          ProviderScope.containerOf(context)
+                              .read(sellerStoreProvider)
+                              .setBannerUrl('');
                         },
                         width: double.infinity,
                         height: 200,
                         label: 'Banner Image',
-                        hint: 'Upload a banner image for your seller profile (recommended: 1000×1000)',
+                        hint:
+                            'Upload a banner image for your seller profile (recommended: 1000×1000)',
                         showPreview: true,
                         allowMultipleSources: true,
                         borderRadius: BorderRadius.circular(12),
@@ -353,7 +316,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       SimpleCustomFields(
                         entries: const [],
                         onChanged: (v) {
-                          // TODO: persist to backend; store map in profile
+                          // Pending: persist to backend; store map in profile
                         },
                         title: 'Add Extra Details',
                       ),
@@ -383,7 +346,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                     'Receive notifications for new leads and orders',
                                 value: true,
                                 onChanged: (value) {
-                                  // TODO: Update preference
+                                  // Pending: Update preference
                                 },
                               ),
                               const Divider(),
@@ -393,7 +356,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                     'Automatically generate quotes for standard products',
                                 value: true,
                                 onChanged: (value) {
-                                  // TODO: Update preference
+                                  // Pending: Update preference
                                 },
                               ),
                               const Divider(),
@@ -403,7 +366,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                     'Get instant alerts for new B2B inquiries',
                                 value: false,
                                 onChanged: (value) {
-                                  // TODO: Update preference
+                                  // Pending: Update preference
                                 },
                               ),
                             ],
@@ -437,8 +400,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   void _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final store = context.read<SellerStore>();
-    
+    final store = ProviderScope.containerOf(context).read(sellerStoreProvider);
+
     await store.saveProfileData(
       legalName: _legalNameController.text.trim(),
       gstin: _gstinController.text.trim(),
@@ -473,11 +436,14 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, color: AppColors.primary, size: 24),
         const SizedBox(width: 12),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
@@ -602,12 +568,16 @@ class _LocationPreview extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${pending.city}, ${pending.state}' + (pending.area != null && pending.area!.isNotEmpty ? ' • ${pending.area}' : ''),
+              '${pending.city}, ${pending.state}${pending.area != null && pending.area!.isNotEmpty ? ' • ${pending.area}' : ''}',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (lat != null && lng != null)
-              Text('Lat: ${lat.toStringAsFixed(5)}, Lng: ${lng.toStringAsFixed(5)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+              Text(
+                  'Lat: ${lat.toStringAsFixed(5)}, Lng: ${lng.toStringAsFixed(5)}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -622,7 +592,8 @@ class _LocationPreview extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+                        launchUrl(googleMapsUrl,
+                            mode: LaunchMode.externalApplication);
                       },
                       icon: const Icon(Icons.directions_outlined),
                       label: const Text('Open in Google Maps'),
@@ -646,7 +617,8 @@ class _LocationPreview extends StatelessWidget {
 
 class _AdditionalContactFields extends StatefulWidget {
   @override
-  State<_AdditionalContactFields> createState() => _AdditionalContactFieldsState();
+  State<_AdditionalContactFields> createState() =>
+      _AdditionalContactFieldsState();
 }
 
 class _AdditionalContactFieldsState extends State<_AdditionalContactFields> {
@@ -703,32 +675,44 @@ class _AdditionalContactFieldsState extends State<_AdditionalContactFields> {
   }
 
   void _saveContactInfo() {
-    final store = context.read<SellerStore>();
-    
-    // Get primary contact from main form
-    final primaryPhone = context.findAncestorStateOfType<_ProfileSettingsPageState>()?._phoneController.text ?? '';
-    final primaryEmail = context.findAncestorStateOfType<_ProfileSettingsPageState>()?._emailController.text ?? '';
-    final website = context.findAncestorStateOfType<_ProfileSettingsPageState>()?._websiteController.text ?? '';
-    
+    final store = ProviderScope.containerOf(context).read(sellerStoreProvider);
+
+    // Get primary contact from main form inputs in parent state
+    final primaryPhone = context
+            .findAncestorStateOfType<_ProfileSettingsPageState>()
+            ?._phoneController
+            .text ??
+        '';
+    final primaryEmail = context
+            .findAncestorStateOfType<_ProfileSettingsPageState>()
+            ?._emailController
+            .text ??
+        '';
+    final website = context
+            .findAncestorStateOfType<_ProfileSettingsPageState>()
+            ?._websiteController
+            .text ??
+        '';
+
     // Update primary contact
     store.setPrimaryPhone(primaryPhone);
     store.setPrimaryEmail(primaryEmail);
     store.setWebsite(website);
-    
+
     // Get additional contacts
     final additionalPhones = _phoneControllers
         .map((controller) => controller.text.trim())
         .where((text) => text.isNotEmpty)
         .toList();
-    
+
     final additionalEmails = _emailControllers
         .map((controller) => controller.text.trim())
         .where((text) => text.isNotEmpty)
         .toList();
-    
+
     store.setAdditionalPhones(additionalPhones);
     store.setAdditionalEmails(additionalEmails);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contact information saved')),
     );
@@ -740,7 +724,8 @@ class _AdditionalContactFieldsState extends State<_AdditionalContactFields> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Additional Phone Numbers
-        Text('Additional Phone Numbers', style: Theme.of(context).textTheme.titleMedium),
+        Text('Additional Phone Numbers',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         ...List.generate(_phoneControllers.length, (index) {
           return Padding(
@@ -776,7 +761,8 @@ class _AdditionalContactFieldsState extends State<_AdditionalContactFields> {
         const SizedBox(height: 16),
 
         // Additional Email Addresses
-        Text('Additional Email Addresses', style: Theme.of(context).textTheme.titleMedium),
+        Text('Additional Email Addresses',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         ...List.generate(_emailControllers.length, (index) {
           return Padding(

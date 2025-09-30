@@ -109,7 +109,7 @@ class _ProductCardState extends State<ProductCard> {
               child: _buildImageSection(isDesktop),
             ),
 
-            // Content Section - Expanded to fill available space
+            // Content Section - uses Flexible to prevent overflow
             Expanded(
               child: Padding(
                 padding: EdgeInsets.all(isMobile ? 6 : 8),
@@ -125,30 +125,41 @@ class _ProductCardState extends State<ProductCard> {
   Widget _buildImageSection(bool isDesktop) {
     return Stack(
       children: [
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.thumbBg,
-            image: _images[_currentIndex].isNotEmpty
-                ? DecorationImage(
-                    image: _images[_currentIndex].startsWith('assets/')
-                        ? AssetImage(_images[_currentIndex])
-                        : NetworkImage(_images[_currentIndex]) as ImageProvider,
-                    fit: BoxFit.cover,
-                    onError: (exception, stackTrace) {
-                      print('Product image error: $exception');
-                    },
-                  )
-                : null,
-          ),
-          child: _images[_currentIndex].isEmpty
-              ? const Icon(
-                  Icons.image,
-                  size: 48,
-                  color: AppColors.textSecondary,
-                )
-              : null,
+        PageView.builder(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          itemCount: _images.length,
+          itemBuilder: (context, index) {
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.thumbBg,
+                image: _images[index].isNotEmpty
+                    ? DecorationImage(
+                        image: _images[index].startsWith('assets/')
+                            ? AssetImage(_images[index])
+                            : NetworkImage(_images[index]) as ImageProvider,
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {
+                          debugPrint('Product image error: $exception');
+                        },
+                      )
+                    : null,
+              ),
+              child: _images[index].isEmpty
+                  ? const Icon(
+                      Icons.image,
+                      size: 48,
+                      color: AppColors.textSecondary,
+                    )
+                  : null,
+            );
+          },
         ),
 
         // Discount badge
@@ -182,16 +193,16 @@ class _ProductCardState extends State<ProductCard> {
             child: Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.chevron_left,
                       color: Colors.white, size: 16),
                   onPressed: () {
-                    _currentIndex =
+                    final newIndex =
                         (_currentIndex - 1 + _images.length) % _images.length;
-                    _pageController.animateToPage(_currentIndex,
+                    _pageController.animateToPage(newIndex,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut);
                   },
@@ -206,15 +217,15 @@ class _ProductCardState extends State<ProductCard> {
             child: Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.chevron_right,
                       color: Colors.white, size: 16),
                   onPressed: () {
-                    _currentIndex = (_currentIndex + 1) % _images.length;
-                    _pageController.animateToPage(_currentIndex,
+                    final newIndex = (_currentIndex + 1) % _images.length;
+                    _pageController.animateToPage(newIndex,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut);
                   },
@@ -242,7 +253,7 @@ class _ProductCardState extends State<ProductCard> {
                     shape: BoxShape.circle,
                     color: _currentIndex == index
                         ? Colors.white
-                        : Colors.white.withOpacity(0.5),
+                        : Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -255,84 +266,88 @@ class _ProductCardState extends State<ProductCard> {
   Widget _buildContentSection(bool isDesktop, bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         // Top content section (shrinks first if space is tight)
-        Flexible(
-          fit: FlexFit.loose,
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Brand
-            Text(
-              widget.brand,
-              style: TextStyle(
-                fontSize: isMobile ? 9 : 10,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            SizedBox(height: isMobile ? 1 : 2),
-
-            // Title
-            Text(
-              widget.title,
-              style: TextStyle(
-                fontSize: isMobile ? 12 : 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-                height: 1.2,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            SizedBox(height: isMobile ? 1 : 2),
-
-            // Subtitle
-            Text(
-              widget.subtitle,
-              style: TextStyle(
-                fontSize: isMobile ? 9 : 10,
-                color: AppColors.textSecondary,
-                height: 1.1,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            SizedBox(height: isMobile ? 2 : 3),
-
-            // Rating
-            if (widget.rating != null)
-              Row(
-                children: [
-                  Icon(Icons.star, size: isMobile ? 10 : 12, color: Colors.amber),
-                  SizedBox(width: isMobile ? 2 : 3),
-                  Text(
-                    widget.rating!.toStringAsFixed(1),
-                    style: TextStyle(
-                        fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.w500),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Brand
+                Text(
+                  widget.brand,
+                  style: TextStyle(
+                    fontSize: isMobile ? 9 : 10,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
 
-            SizedBox(height: isMobile ? 2 : 3),
+                SizedBox(height: isMobile ? 1 : 2),
 
-            // Price
-            Text(
-              widget.price,
-              style: TextStyle(
-                fontSize: isMobile ? 14 : 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
+                // Title
+                Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                SizedBox(height: isMobile ? 1 : 2),
+
+                // Subtitle
+                Text(
+                  widget.subtitle,
+                  style: TextStyle(
+                    fontSize: isMobile ? 9 : 10,
+                    color: AppColors.textSecondary,
+                    height: 1.1,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                SizedBox(height: isMobile ? 2 : 2),
+
+                // Rating
+                if (widget.rating != null)
+                  Row(
+                    children: [
+                      Icon(Icons.star,
+                          size: isMobile ? 10 : 12, color: Colors.amber),
+                      SizedBox(width: isMobile ? 2 : 3),
+                      Text(
+                        widget.rating!.toStringAsFixed(1),
+                        style: TextStyle(
+                            fontSize: isMobile ? 9 : 10,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+
+                SizedBox(height: isMobile ? 2 : 2),
+
+                // Price
+                Text(
+                  widget.price,
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
             ),
-          ],
-        )),
+          ),
+        ),
 
         // Bottom section with action buttons
         Row(

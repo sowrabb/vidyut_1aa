@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../store/state_info_store.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/tokens.dart';
 import '../pages/comprehensive_state_info_page.dart';
 import 'profile_widgets.dart';
 import 'responsive_layout.dart';
+import '../../../app/provider_registry.dart';
 
 // Generator Selection Screen
-class GeneratorSelectionScreen extends StatelessWidget {
+class GeneratorSelectionScreen extends ConsumerWidget {
   const GeneratorSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<StateInfoStore>();
-    
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(localStateInfoStoreProvider);
+
     return Column(
       children: [
         Padding(
@@ -23,22 +24,26 @@ class GeneratorSelectionScreen extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            padding: ResponsiveLayout.getScreenPadding(context),
-            itemCount: store.powerGenerators.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final generator = store.powerGenerators[index];
-              return Card(
-                child: ListTile(
-                  title: Text(generator.name),
-                  subtitle: Text('${generator.type} - ${generator.capacity}'),
-                  onTap: () => store.selectGenerator(generator.id),
-                  trailing: const Icon(Icons.arrow_forward_ios),
+          child: store.powerGenerators.isEmpty
+              ? _buildEmptyState(context, 'No power generators available')
+              : ListView.separated(
+                  padding: ResponsiveLayout.getScreenPadding(context),
+                  itemCount: store.powerGenerators.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final generator = store.powerGenerators[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(generator.name),
+                        subtitle:
+                            Text('${generator.type} - ${generator.capacity}'),
+                        onTap: () => store.selectGenerator(generator.id),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
         if (!ResponsiveLayout.isMobile(context))
           NavigationButtons(
@@ -51,18 +56,48 @@ class GeneratorSelectionScreen extends StatelessWidget {
 }
 
 // Generator Profile Screen
-class GeneratorProfileScreen extends StatelessWidget {
+class GeneratorProfileScreen extends ConsumerWidget {
   const GeneratorProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<StateInfoStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(stateInfoStoreProvider);
     final generator = store.selectedGeneratorData;
-    
+
     if (generator == null) {
-      return const Center(child: Text('Generator not found'));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.textSecondary,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Generator not found',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Please select a generator from the list',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
-    
+
     return Column(
       children: [
         Padding(
@@ -95,6 +130,10 @@ class GeneratorProfileScreen extends StatelessWidget {
               'Annual Revenue': generator.revenue,
             },
             posts: generator.posts,
+            productDesigns: generator.productDesigns,
+            sectorType: 'generator',
+            sectorId: generator.id,
+            isEditMode: false, // Pending: Pass from parent
           ),
         ),
         if (!ResponsiveLayout.isMobile(context))
@@ -110,13 +149,13 @@ class GeneratorProfileScreen extends StatelessWidget {
 }
 
 // Transmission Selection Screen
-class TransmissionSelectionScreen extends StatelessWidget {
+class TransmissionSelectionScreen extends ConsumerWidget {
   const TransmissionSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<StateInfoStore>();
-    
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(localStateInfoStoreProvider);
+
     return Column(
       children: [
         Padding(
@@ -127,22 +166,26 @@ class TransmissionSelectionScreen extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            padding: ResponsiveLayout.getScreenPadding(context),
-            itemCount: store.transmissionLines.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final transmission = store.transmissionLines[index];
-              return Card(
-                child: ListTile(
-                  title: Text(transmission.name),
-                  subtitle: Text('${transmission.voltage} - ${transmission.coverage}'),
-                  onTap: () => store.selectTransmission(transmission.id),
-                  trailing: const Icon(Icons.arrow_forward_ios),
+          child: store.transmissionLines.isEmpty
+              ? _buildEmptyState(context, 'No transmission lines available')
+              : ListView.separated(
+                  padding: ResponsiveLayout.getScreenPadding(context),
+                  itemCount: store.transmissionLines.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final transmission = store.transmissionLines[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(transmission.name),
+                        subtitle: Text(
+                            '${transmission.voltage} - ${transmission.coverage}'),
+                        onTap: () => store.selectTransmission(transmission.id),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
         if (!ResponsiveLayout.isMobile(context))
           NavigationButtons(
@@ -155,18 +198,48 @@ class TransmissionSelectionScreen extends StatelessWidget {
 }
 
 // Transmission Profile Screen
-class TransmissionProfileScreen extends StatelessWidget {
+class TransmissionProfileScreen extends ConsumerWidget {
   const TransmissionProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<StateInfoStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(stateInfoStoreProvider);
     final transmission = store.selectedTransmissionData;
-    
+
     if (transmission == null) {
-      return const Center(child: Text('Transmission line not found'));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.textSecondary,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Transmission line not found',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Please select a transmission line from the list',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
-    
+
     return Column(
       children: [
         Padding(
@@ -199,6 +272,10 @@ class TransmissionProfileScreen extends StatelessWidget {
               'Annual Revenue': transmission.revenue,
             },
             posts: transmission.posts,
+            productDesigns: transmission.productDesigns,
+            sectorType: 'transmission',
+            sectorId: transmission.id,
+            isEditMode: false, // Pending: Pass from parent
           ),
         ),
         if (!ResponsiveLayout.isMobile(context))
@@ -214,13 +291,13 @@ class TransmissionProfileScreen extends StatelessWidget {
 }
 
 // Distribution Selection Screen
-class DistributionSelectionScreen extends StatelessWidget {
+class DistributionSelectionScreen extends ConsumerWidget {
   const DistributionSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<StateInfoStore>();
-    
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(localStateInfoStoreProvider);
+
     return Column(
       children: [
         Padding(
@@ -231,22 +308,25 @@ class DistributionSelectionScreen extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            padding: ResponsiveLayout.getScreenPadding(context),
-            itemCount: store.distributionCompanies.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final distribution = store.distributionCompanies[index];
-              return Card(
-                child: ListTile(
-                  title: Text(distribution.name),
-                  subtitle: Text(distribution.customers),
-                  onTap: () => store.selectDistribution(distribution.id),
-                  trailing: const Icon(Icons.arrow_forward_ios),
+          child: store.distributionCompanies.isEmpty
+              ? _buildEmptyState(context, 'No distribution companies available')
+              : ListView.separated(
+                  padding: ResponsiveLayout.getScreenPadding(context),
+                  itemCount: store.distributionCompanies.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final distribution = store.distributionCompanies[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(distribution.name),
+                        subtitle: Text(distribution.customers),
+                        onTap: () => store.selectDistribution(distribution.id),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
         if (!ResponsiveLayout.isMobile(context))
           NavigationButtons(
@@ -259,18 +339,48 @@ class DistributionSelectionScreen extends StatelessWidget {
 }
 
 // Distribution Profile Screen
-class DistributionProfileScreen extends StatelessWidget {
+class DistributionProfileScreen extends ConsumerWidget {
   const DistributionProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<StateInfoStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(stateInfoStoreProvider);
     final distribution = store.selectedDistributionData;
-    
+
     if (distribution == null) {
-      return const Center(child: Text('Distribution company not found'));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.textSecondary,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Distribution company not found',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Please select a distribution company from the list',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
-    
+
     return Column(
       children: [
         Padding(
@@ -303,6 +413,10 @@ class DistributionProfileScreen extends StatelessWidget {
               'Capacity': distribution.capacity,
             },
             posts: distribution.posts,
+            productDesigns: distribution.productDesigns,
+            sectorType: 'distribution',
+            sectorId: distribution.id,
+            isEditMode: false, // Pending: Pass from parent
           ),
         ),
         if (!ResponsiveLayout.isMobile(context))
@@ -314,4 +428,41 @@ class DistributionProfileScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+// Helper method for empty states
+Widget _buildEmptyState(BuildContext context, String message) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.info_outline,
+            size: 64,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 18,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Please check back later or contact support',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    ),
+  );
 }

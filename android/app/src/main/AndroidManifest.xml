@@ -2,6 +2,13 @@
     <!-- Location permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Camera and media permissions for image capture/pick -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- For older devices: READ_EXTERNAL_STORAGE no longer needed when targeting modern SDKs; remove to reduce scope. -->
+    
+    <!-- Declare camera as non-required so devices without a camera are not excluded -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     
     <application
         android:label="vidyut"

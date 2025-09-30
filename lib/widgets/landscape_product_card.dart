@@ -73,7 +73,7 @@ class LandscapeProductCard extends StatelessWidget {
             children: [
               // Product Image (left side)
               _buildImageSection(),
-              
+
               // Content Section (right side)
               Expanded(
                 child: _buildContentSection(context),
@@ -86,7 +86,7 @@ class LandscapeProductCard extends StatelessWidget {
   }
 
   Widget _buildImageSection() {
-    return Container(
+    return SizedBox(
       width: 130, // Reduced width to give more space to content
       height: 170,
       child: Stack(
@@ -298,7 +298,7 @@ class LandscapeProductCard extends StatelessWidget {
   Future<void> _call(String number) async {
     // Record call interaction
     onCallPressed?.call();
-    
+
     final uri = Uri(scheme: 'tel', path: number);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -310,7 +310,7 @@ class LandscapeProductCard extends StatelessWidget {
   Future<void> _whatsapp(String number) async {
     // Record WhatsApp interaction
     onWhatsAppPressed?.call();
-    
+
     final uri = Uri.parse('https://wa.me/$number');
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);

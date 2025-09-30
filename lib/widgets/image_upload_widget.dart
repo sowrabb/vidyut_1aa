@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../services/image_service.dart';
-import 'optimized_image_widget.dart';
+import '../services/lightweight_image_service.dart';
+import 'optimized_image.dart';
+import '../services/lightweight_image_service.dart' as lw;
+import '../services/image_management_service.dart' as ims;
 
 class ImageUploadWidget extends StatefulWidget {
   final String? currentImagePath;
@@ -42,6 +44,8 @@ class ImageUploadWidget extends StatefulWidget {
 class _ImageUploadWidgetState extends State<ImageUploadWidget> {
   bool _isUploading = false;
   String? _errorMessage;
+  String? _localPreviewPath; // local temp path for immediate preview
+  double _progress = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -52,14 +56,15 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
           Text(
             widget.label!,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+                  fontWeight: FontWeight.w600,
+                ),
           ),
           const SizedBox(height: 8),
         ],
-        
+
         // Image preview
-        if (widget.showPreview && widget.currentImagePath != null) ...[
+        if (widget.showPreview &&
+            (widget.currentImagePath != null || _localPreviewPath != null)) ...[
           Container(
             width: widget.width ?? double.infinity,
             height: widget.height ?? 200,
@@ -73,21 +78,40 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
             child: ClipRRect(
               borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
               child: OptimizedImageWidget(
-                imagePath: widget.currentImagePath!,
+                imagePath: _localPreviewPath ?? widget.currentImagePath!,
                 width: widget.width ?? double.infinity,
                 height: widget.height ?? 200,
                 fit: BoxFit.cover,
                 borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
-                enableLazyLoading: false,
-                enableProgressiveLoading: true,
                 placeholder: _buildPlaceholder(),
                 errorWidget: _buildErrorWidget(),
               ),
             ),
           ),
+          if (_isUploading)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius:
+                      widget.borderRadius ?? BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text('${(_progress * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           const SizedBox(height: 12),
         ],
-        
+
         // Upload buttons
         if (widget.allowMultipleSources) ...[
           Row(
@@ -127,9 +151,10 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
             ),
           ),
         ],
-        
+
         // Remove button
-        if (widget.currentImagePath != null && widget.onImageRemoved != null) ...[
+        if (widget.currentImagePath != null &&
+            widget.onImageRemoved != null) ...[
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
@@ -144,7 +169,7 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
             ),
           ),
         ],
-        
+
         // Error message
         if (_errorMessage != null) ...[
           const SizedBox(height: 8),
@@ -153,7 +178,7 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
             style: const TextStyle(color: Colors.red, fontSize: 12),
           ),
         ],
-        
+
         // Hint text
         if (widget.hint != null) ...[
           const SizedBox(height: 4),
@@ -263,7 +288,7 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
       _showUnsupportedMessage('Camera access is not supported on web');
       return;
     }
-    
+
     await _uploadImage(() => ImageService.uploadFromCamera());
   }
 
@@ -275,7 +300,8 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
     await _uploadImage(() => ImageService.uploadFromFiles());
   }
 
-  Future<void> _uploadImage(Future<ImageUploadResult?> Function() uploadFunction) async {
+  Future<void> _uploadImage(
+      Future<ImageUploadResult?> Function() uploadFunction) async {
     setState(() {
       _isUploading = true;
       _errorMessage = null;
@@ -283,25 +309,50 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
 
     try {
       final result = await uploadFunction();
-      
-      if (result != null) {
-        widget.onImageSelected(result);
-        
+
+      if (result == null) {
+        setState(() {
+          _errorMessage = 'Failed to upload image. Please try again.';
+        });
+        return;
+      }
+
+      // Immediate local preview
+      setState(() {
+        _localPreviewPath = result.path;
+      });
+
+      // Kick off remote upload via ImageManagementService
+      final manager = ims.ImageManagementService();
+      manager.addListener(() {
+        setState(() {
+          _progress = manager.uploadProgress;
+        });
+      });
+
+      final bytes = await lw.LightweightImageService.getImageBytes(result.path);
+      String? uploadedUrl;
+      if (bytes != null) {
+        uploadedUrl =
+            await manager.uploadImage(bytes, folder: 'seller_banners');
+      }
+
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+        // Inform parent with remote URL finalized
+        final confirmed =
+            lw.ImageUploadResult(path: uploadedUrl, fileName: result.fileName);
+        widget.onImageSelected(confirmed);
+        setState(() {
+          _localPreviewPath = uploadedUrl; // switch to remote URL
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Image uploaded successfully! '
-                'Size reduced by ${result.compressionPercentage} '
-                '(${result.formattedOriginalSize} → ${result.formattedCompressedSize})',
-              ),
-              duration: const Duration(seconds: 3),
-            ),
+            const SnackBar(content: Text('Image uploaded successfully!')),
           );
         }
       } else {
         setState(() {
-          _errorMessage = 'Failed to upload image. Please try again.';
+          _errorMessage = 'Upload failed. You can retry.';
         });
       }
     } catch (e) {

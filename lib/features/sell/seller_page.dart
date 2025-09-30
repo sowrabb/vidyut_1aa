@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/layout/app_shell_scaffold.dart';
 import '../../app/tokens.dart';
-import '../../app/app_state.dart';
 import '../../app/geo.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ionicons/ionicons.dart';
-import 'package:provider/provider.dart';
-import 'store/seller_store.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/provider_registry.dart';
 import '../../widgets/responsive_product_grid.dart';
 
-class SellerPage extends StatefulWidget {
+class SellerPage extends ConsumerStatefulWidget {
   final String sellerName;
   const SellerPage({super.key, required this.sellerName});
 
   @override
-  State<SellerPage> createState() => _SellerPageState();
+  ConsumerState<SellerPage> createState() => _SellerPageState();
 }
 
-class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
+class _SellerPageState extends ConsumerState<SellerPage>
+    with TickerProviderStateMixin {
   late final TabController _tabs;
 
   @override
@@ -28,15 +28,15 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
     // Count a profile view when this page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<SellerStore>().incrementProfileView();
+        ref.read(sellerStoreProvider).incrementProfileView();
       }
     });
   }
 
   (double, double) _mockSellerLatLng(String seed) {
     // Deterministic fake lat/lng around Hyderabad for demo purposes
-    final baseLat = 17.3850;
-    final baseLng = 78.4867;
+    const baseLat = 17.3850;
+    const baseLng = 78.4867;
     final delta = (seed.hashCode % 1000) / 10000.0; // 0..0.0999
     return (baseLat + delta, baseLng + delta);
   }
@@ -62,7 +62,7 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
     } else {
       websiteUri = Uri.parse('https://$website');
     }
-    
+
     if (await canLaunchUrl(websiteUri)) {
       await launchUrl(websiteUri, mode: LaunchMode.externalApplication);
     }
@@ -135,32 +135,33 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
 
   Widget _masthead(BuildContext context, TextTheme t) {
     final isPhone = context.isPhone;
-    final double logoSize = 112; // 2x size
+    const double logoSize = 112; // 2x size
 
     // Common meta rows split per requirement
-    final appState = context.read<AppState>();
-    final hasSellerLatLng = appState.latitude != null && appState.longitude != null;
+    final location = ref.read(locationControllerProvider);
+    final hasSellerLatLng =
+        location.latitude != null && location.longitude != null;
     final sellerPos = hasSellerLatLng
-        ? (appState.latitude!, appState.longitude!)
+        ? (location.latitude!, location.longitude!)
         : _mockSellerLatLng(widget.sellerName);
-    final distanceText = (appState.latitude != null &&
-            appState.longitude != null)
-        ? '${distanceKm(lat1: appState.latitude!, lon1: appState.longitude!, lat2: sellerPos.$1, lon2: sellerPos.$2).toStringAsFixed(1)} km away'
+    final distanceText = (location.latitude != null &&
+            location.longitude != null)
+        ? '${distanceKm(lat1: location.latitude!, lon1: location.longitude!, lat2: sellerPos.$1, lon2: sellerPos.$2).toStringAsFixed(1)} km away'
         : null;
 
-    final store = context.read<SellerStore>();
+    final store = ref.read(sellerStoreProvider);
     final contactMeta = [
       const _Meta('Hyderabad, Telangana'),
-      _Meta('GST: 36BDTPG0207N1ZC'),
+      const _Meta('GST: 36BDTPG0207N1ZC'),
       if (store.primaryPhone.isNotEmpty)
         _ClickableMetaIcon(
-          Icons.call, 
+          Icons.call,
           store.primaryPhone,
           onTap: () => _launchPhone(store.primaryPhone),
         ),
       if (store.primaryEmail.isNotEmpty)
         _ClickableMetaIcon(
-          Icons.email_outlined, 
+          Icons.email_outlined,
           store.primaryEmail,
           onTap: () => _launchEmail(store.primaryEmail),
         ),
@@ -172,7 +173,7 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
       _Meta('72% response'),
     ];
 
-    Future<void> _openMaps() async {
+    Future<void> openMaps() async {
       final google = Uri.parse(
           'https://www.google.com/maps/search/?api=1&query=${sellerPos.$1},${sellerPos.$2}');
       if (!await launchUrl(google, mode: LaunchMode.externalApplication)) {
@@ -215,39 +216,50 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
                               runSpacing: 6,
                               children: contactMeta),
                           const SizedBox(height: 6),
-                          Wrap(spacing: 12, runSpacing: 6, children: statsMeta),
+                          const Wrap(
+                              spacing: 12, runSpacing: 6, children: statsMeta),
                         ],
                       ),
                     ),
                   ]),
                 ),
                 const SizedBox(width: 12),
-                // Right: desktop CTAs
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  FilledButton.icon(
-                    onPressed: () {
-                      context.read<SellerStore>().recordSellerContactCall();
-                    },
-                    icon: const Icon(Icons.call),
-                    label: const Text('Contact Supplier'),
+                // Right: desktop CTAs - prevent overflow by allowing wrap and constraints
+                Flexible(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () {
+                          ref
+                              .read(sellerStoreProvider)
+                              .recordSellerContactCall();
+                        },
+                        icon: const Icon(Icons.call),
+                        label: const Text('Contact Supplier'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: openMaps,
+                        icon: const Icon(Icons.location_on_outlined),
+                        label: Text(distanceText ?? 'View on Map'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () {
+                          ref
+                              .read(sellerStoreProvider)
+                              .recordSellerContactWhatsapp();
+                        },
+                        icon: const Icon(Ionicons.logo_whatsapp),
+                        label: const Text('WhatsApp'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.whatsapp,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: _openMaps,
-                    icon: const Icon(Icons.location_on_outlined),
-                    label: Text(distanceText ?? 'View on Map'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () {
-                      context.read<SellerStore>().recordSellerContactWhatsapp();
-                    },
-                    icon: const Icon(Ionicons.logo_whatsapp),
-                    label: const Text('WhatsApp'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.whatsapp,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ]),
+                ),
               ],
             )
           : Column(
@@ -270,25 +282,27 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 Wrap(spacing: 12, runSpacing: 6, children: contactMeta),
                 const SizedBox(height: 6),
-                Wrap(spacing: 12, runSpacing: 6, children: statsMeta),
+                const Wrap(spacing: 12, runSpacing: 6, children: statsMeta),
                 const SizedBox(height: 10),
                 // Mobile CTAs under details
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   FilledButton.icon(
                     onPressed: () {
-                      context.read<SellerStore>().recordSellerContactCall();
+                      ref.read(sellerStoreProvider).recordSellerContactCall();
                     },
                     icon: const Icon(Icons.call),
                     label: const Text('Contact Supplier'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: _openMaps,
+                    onPressed: openMaps,
                     icon: const Icon(Icons.location_on_outlined),
                     label: Text(distanceText ?? 'View on Map'),
                   ),
                   FilledButton.icon(
                     onPressed: () {
-                      context.read<SellerStore>().recordSellerContactWhatsapp();
+                      ref
+                          .read(sellerStoreProvider)
+                          .recordSellerContactWhatsapp();
                     },
                     icon: const Icon(Ionicons.logo_whatsapp),
                     label: const Text('WhatsApp'),
@@ -334,14 +348,14 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(16), children: [_productsGallery(context)]);
   Widget _contactTab(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final store = context.watch<SellerStore>();
-    
+    final store = ref.watch(sellerStoreProvider);
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text('Contact Information', style: t.titleLarge),
         const SizedBox(height: 16),
-        
+
         // Primary Contact
         if (store.primaryPhone.isNotEmpty || store.primaryEmail.isNotEmpty) ...[
           Text('Primary Contact', style: t.titleMedium),
@@ -362,13 +376,13 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
             ),
           const SizedBox(height: 16),
         ],
-        
+
         // Additional Phones
         if (store.additionalPhones.isNotEmpty) ...[
           Text('Additional Phone Numbers', style: t.titleMedium),
           const SizedBox(height: 8),
-          ...store.additionalPhones.map((phone) => 
-            _ContactItem(
+          ...store.additionalPhones.map(
+            (phone) => _ContactItem(
               icon: Icons.phone,
               label: 'Phone',
               value: phone,
@@ -377,13 +391,13 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
         ],
-        
+
         // Additional Emails
         if (store.additionalEmails.isNotEmpty) ...[
           Text('Additional Email Addresses', style: t.titleMedium),
           const SizedBox(height: 8),
-          ...store.additionalEmails.map((email) => 
-            _ContactItem(
+          ...store.additionalEmails.map(
+            (email) => _ContactItem(
               icon: Icons.email,
               label: 'Email',
               value: email,
@@ -392,7 +406,7 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
         ],
-        
+
         // Website
         if (store.website.isNotEmpty) ...[
           Text('Website', style: t.titleMedium),
@@ -405,7 +419,7 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
         ],
-        
+
         // Business Hours (placeholder)
         Text('Business Hours', style: t.titleMedium),
         const SizedBox(height: 8),
@@ -424,7 +438,7 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
           label: 'Sunday',
           value: 'Closed',
         ),
-        
+
         // Add bottom padding to prevent content from being cut off by bottom navigation
         const SizedBox(height: 80),
       ],
@@ -433,8 +447,8 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
 
   Widget _aboutSection(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final fields = context.watch<SellerStore>().profileFields;
-    final materials = context.watch<SellerStore>().profileMaterials;
+    final fields = ref.watch(sellerStoreProvider).profileFields;
+    final materials = ref.watch(sellerStoreProvider).profileMaterials;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('About Us', style: t.titleLarge),
       const SizedBox(height: 8),
@@ -470,7 +484,7 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
   }
 
   Widget _statsGrid(BuildContext context) {
-    final items = const [
+    const items = [
       _Stat('Nature of Business', 'Manufacturer', Icons.business_outlined),
       _Stat('Legal Status of Firm', 'Proprietorship', Icons.gavel_outlined),
       _Stat('Annual Turnover', '0–40 L', Icons.trending_up_outlined),
@@ -601,18 +615,16 @@ class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
   }
 
   Widget _satisfaction(BuildContext context) {
-    return Card(
+    return const Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('User Satisfaction'),
-              SizedBox(height: 8),
-              _Meter(label: 'Response', value: 0.72),
-              _Meter(label: 'Quality', value: 0.81),
-              _Meter(label: 'Delivery', value: 0.64),
-            ]),
+        padding: EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('User Satisfaction'),
+          SizedBox(height: 8),
+          _Meter(label: 'Response', value: 0.72),
+          _Meter(label: 'Quality', value: 0.81),
+          _Meter(label: 'Delivery', value: 0.64),
+        ]),
       ),
     );
   }
@@ -634,7 +646,6 @@ class _Meta extends StatelessWidget {
       Text(text, style: Theme.of(context).textTheme.bodySmall);
 }
 
-
 class _ClickableMetaIcon extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -642,22 +653,25 @@ class _ClickableMetaIcon extends StatelessWidget {
   const _ClickableMetaIcon(this.icon, this.text, {required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AppColors.primary),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.primary,
-            decoration: TextDecoration.underline,
-          ),
+        onTap: onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primary),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                text,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 class _Badge extends StatelessWidget {
@@ -709,7 +723,7 @@ class _ContactItem extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback? onTap;
-  
+
   const _ContactItem({
     required this.icon,
     required this.label,
@@ -725,7 +739,9 @@ class _ContactItem extends StatelessWidget {
         leading: Icon(icon, color: AppColors.primary),
         title: Text(label),
         subtitle: Text(value),
-        trailing: onTap != null ? const Icon(Icons.arrow_forward_ios, size: 16) : null,
+        trailing: onTap != null
+            ? const Icon(Icons.arrow_forward_ios, size: 16)
+            : null,
         onTap: onTap,
       ),
     );
@@ -763,7 +779,7 @@ class _SellerReviewCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text('Product Name: $product', style: t.bodySmall),
           const SizedBox(height: 6),
-          Wrap(spacing: 6, children: const [
+          const Wrap(spacing: 6, children: [
             Chip(label: Text('Response')),
             Chip(label: Text('Quality')),
             Chip(label: Text('Delivery'))

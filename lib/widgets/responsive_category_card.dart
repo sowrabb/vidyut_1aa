@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app/tokens.dart';
 import '../app/breakpoints.dart';
+import 'lightweight_image_widget.dart';
 import '../features/categories/categories_page.dart';
 
 /// Highly responsive category card that adapts to any screen size
@@ -20,11 +21,11 @@ class ResponsiveCategoryCard extends StatelessWidget {
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
         final screenWidth = MediaQuery.sizeOf(context).width;
-        
+
         // Adaptive sizing based on card width and screen size
         final isSmallCard = cardWidth < 140;
         final isMobile = screenWidth < AppBreakpoints.tablet;
-        
+
         return Card(
           clipBehavior: Clip.antiAlias,
           elevation: 2,
@@ -40,7 +41,7 @@ class ResponsiveCategoryCard extends StatelessWidget {
               children: [
                 // Image section
                 _buildImageSection(isSmallCard),
-                
+
                 // Content section
                 Expanded(
                   child: _buildContentSection(cardWidth, isSmallCard, isMobile),
@@ -55,8 +56,8 @@ class ResponsiveCategoryCard extends StatelessWidget {
 
   Widget _buildImageSection(bool isSmallCard) {
     // Adaptive image aspect ratio - categories need more image focus
-    final imageAspectRatio = isSmallCard ? 16/10 : 16/11;
-    
+    final imageAspectRatio = isSmallCard ? 16 / 10 : 16 / 11;
+
     return AspectRatio(
       aspectRatio: imageAspectRatio,
       child: Container(
@@ -64,38 +65,60 @@ class ResponsiveCategoryCard extends StatelessWidget {
         height: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.thumbBg,
-          image: category.imageUrl.isNotEmpty
-              ? DecorationImage(
-                  image: category.imageUrl.startsWith('assets/')
-                      ? AssetImage(category.imageUrl)
-                      : NetworkImage(category.imageUrl) as ImageProvider,
-                  fit: BoxFit.cover,
-                  onError: (exception, stackTrace) {
-                    debugPrint('Category image error: $exception');
-                  },
-                )
-              : null,
         ),
-        child: category.imageUrl.isEmpty
-            ? Icon(
+        child: category.imageUrl.isNotEmpty
+            ? ClipRRect(
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+                child: LightweightImageWidget(
+                  imagePath: category.imageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: Container(
+                    color: AppColors.thumbBg,
+                    child: const Center(
+                        child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))),
+                  ),
+                  errorWidget: Builder(builder: (context) {
+                    debugPrint(
+                        'Category image failed to load: ' + category.imageUrl);
+                    return Container(
+                      color: AppColors.thumbBg,
+                      child: Icon(
+                        Icons.category,
+                        size: isSmallCard ? 24 : 32,
+                        color: AppColors.textSecondary,
+                      ),
+                    );
+                  }),
+                ),
+              )
+            : Icon(
                 Icons.category,
                 size: isSmallCard ? 24 : 32,
                 color: AppColors.textSecondary,
-              )
-            : null,
+              ),
       ),
     );
   }
 
-  Widget _buildContentSection(double cardWidth, bool isSmallCard, bool isMobile) {
+  Widget _buildContentSection(
+      double cardWidth, bool isSmallCard, bool isMobile) {
     // Reduced padding to prevent overflow
     final contentPadding = EdgeInsets.all(isSmallCard ? 3.0 : 5.0);
     final spacing = isSmallCard ? 1.5 : 3.0;
-    
+
     // More conservative text sizes
-    final titleSize = _getAdaptiveTextSize(cardWidth, base: 12, min: 9, max: 14);
-    final countSize = _getAdaptiveTextSize(cardWidth, base: 10, min: 7, max: 11);
-    final buttonSize = _getAdaptiveTextSize(cardWidth, base: 10, min: 8, max: 11);
+    final titleSize =
+        _getAdaptiveTextSize(cardWidth, base: 12, min: 9, max: 14);
+    final countSize =
+        _getAdaptiveTextSize(cardWidth, base: 10, min: 7, max: 11);
+    final buttonSize =
+        _getAdaptiveTextSize(cardWidth, base: 10, min: 8, max: 11);
 
     return Padding(
       padding: contentPadding,
@@ -131,7 +154,9 @@ class ResponsiveCategoryCard extends StatelessWidget {
           ),
 
           // Industries (only show if there's space and not too small)
-          if (!isSmallCard && cardWidth > 140 && category.industries.isNotEmpty) ...[
+          if (!isSmallCard &&
+              cardWidth > 140 &&
+              category.industries.isNotEmpty) ...[
             SizedBox(height: spacing),
             _buildIndustryChips(cardWidth),
           ],
@@ -149,7 +174,7 @@ class ResponsiveCategoryCard extends StatelessWidget {
     // Show fewer chips on smaller cards
     final maxChips = cardWidth < 160 ? 1 : (cardWidth < 200 ? 2 : 3);
     final chipSize = _getAdaptiveTextSize(cardWidth, base: 10, min: 8, max: 11);
-    
+
     return Wrap(
       spacing: 4,
       runSpacing: 2,
@@ -157,7 +182,7 @@ class ResponsiveCategoryCard extends StatelessWidget {
           .take(maxChips)
           .map(
             (industry) => Container(
-              padding: EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 horizontal: AppSpace.xxs,
                 vertical: 2,
               ),
@@ -179,18 +204,20 @@ class ResponsiveCategoryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildViewButton(double cardWidth, bool isSmallCard, double buttonSize) {
-    final buttonHeight = cardWidth < 140 ? 32.0 : (cardWidth < 180 ? 36.0 : 40.0);
+  Widget _buildViewButton(
+      double cardWidth, bool isSmallCard, double buttonSize) {
+    final buttonHeight =
+        cardWidth < 140 ? 32.0 : (cardWidth < 180 ? 36.0 : 40.0);
     final adjustedFontSize = buttonSize + 2; // Increase font size by 2px
-    
+
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          padding: EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           minimumSize: Size(0, buttonHeight),
-          side: BorderSide(color: AppColors.primary, width: 1),
+          side: const BorderSide(color: AppColors.primary, width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
           ),
@@ -209,10 +236,11 @@ class ResponsiveCategoryCard extends StatelessWidget {
   }
 
   // Adaptive sizing helper
-  double _getAdaptiveTextSize(double cardWidth, {required double base, required double min, required double max}) {
+  double _getAdaptiveTextSize(double cardWidth,
+      {required double base, required double min, required double max}) {
     if (cardWidth < 120) return min;
     if (cardWidth > 200) return max;
-    
+
     // Linear interpolation between min and max based on card width
     final ratio = (cardWidth - 120) / (200 - 120);
     return min + (max - min) * ratio;

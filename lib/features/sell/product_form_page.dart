@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
-import 'store/seller_store.dart';
+// seller store accessed via providers
 import 'models.dart';
 // removed: old advanced custom fields editor
 import 'widgets/simple_custom_fields.dart';
 import 'widgets/materials_selector.dart';
-import '../../widgets/optimized_image_widget.dart';
+import '../../widgets/media_upload_widget.dart';
+import '../../../app/provider_registry.dart';
 
-class ProductFormPage extends StatefulWidget {
+class ProductFormPage extends ConsumerStatefulWidget {
   final Product? product; // null for new product, non-null for editing
 
   const ProductFormPage({super.key, this.product});
 
   @override
-  State<ProductFormPage> createState() => _ProductFormPageState();
+  ConsumerState<ProductFormPage> createState() => _ProductFormPageState();
 }
 
-class _ProductFormPageState extends State<ProductFormPage> {
+class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _brandController = TextEditingController();
@@ -34,7 +35,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
   Map<String, dynamic> _customValues = {};
   List<MapEntry<String, String>> _simpleFields = [];
   final List<String> _images = <String>[]; // local paths or URLs
-  // Image picker temporarily disabled for web deployment
+  final List<String> _documents = <String>[]; // document URLs
 
   @override
   void initState() {
@@ -42,30 +43,6 @@ class _ProductFormPageState extends State<ProductFormPage> {
     if (widget.product != null) {
       _loadProductData();
     }
-    // Add listeners for auto-save
-    _addTextControllerListeners();
-  }
-
-  void _addTextControllerListeners() {
-    _titleController.addListener(_autoSave);
-    _brandController.addListener(_autoSave);
-    _subtitleController.addListener(_autoSave);
-    _descriptionController.addListener(_autoSave);
-    _priceController.addListener(_autoSave);
-    _moqController.addListener(_autoSave);
-    _gstController.addListener(_autoSave);
-    _materialsController.addListener(_autoSave);
-  }
-
-  void _autoSave() {
-    // Auto-save form data to prevent loss
-    _saveFormState();
-  }
-
-  void _saveFormState() {
-    // Save form state to local storage
-    // This would typically use SharedPreferences or similar
-    // For now, we'll just store in memory
   }
 
   void _loadProductData() {
@@ -83,6 +60,9 @@ class _ProductFormPageState extends State<ProductFormPage> {
     _images
       ..clear()
       ..addAll(product.images.take(5));
+    _documents
+      ..clear()
+      ..addAll(product.documents);
   }
 
   @override
@@ -138,12 +118,6 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a title';
                           }
-                          if (value.length < 3) {
-                            return 'Title must be at least 3 characters';
-                          }
-                          if (value.length > 100) {
-                            return 'Title must be less than 100 characters';
-                          }
                           return null;
                         },
                       ),
@@ -156,12 +130,6 @@ class _ProductFormPageState extends State<ProductFormPage> {
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a brand';
-                          }
-                          if (value.length < 2) {
-                            return 'Brand must be at least 2 characters';
-                          }
-                          if (value.length > 50) {
-                            return 'Brand must be less than 50 characters';
                           }
                           return null;
                         },
@@ -177,6 +145,65 @@ class _ProductFormPageState extends State<ProductFormPage> {
                       hintText: 'e.g., PVC | 1.5 sqmm | 1100V',
                       border: OutlineInputBorder(),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Category and Status
+                  ResponsiveRow(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: (widget.product?.category.isNotEmpty ?? false)
+                            ? widget.product!.category
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Category *',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: kCategories
+                            .map((c) =>
+                                DropdownMenuItem(value: c, child: Text(c)))
+                            .toList(),
+                        onChanged: (v) {
+                          // store locally in _customValues to include while saving
+                          _customValues = {
+                            ..._customValues,
+                            '__category__': v ?? '',
+                          };
+                        },
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Please select a category'
+                            : null,
+                      ),
+                      DropdownButtonFormField<ProductStatus>(
+                        value: widget.product?.status ?? ProductStatus.draft,
+                        decoration: const InputDecoration(
+                          labelText: 'Status',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                              value: ProductStatus.active,
+                              child: Text('Active')),
+                          DropdownMenuItem(
+                              value: ProductStatus.inactive,
+                              child: Text('Inactive')),
+                          DropdownMenuItem(
+                              value: ProductStatus.pending,
+                              child: Text('Pending')),
+                          DropdownMenuItem(
+                              value: ProductStatus.draft, child: Text('Draft')),
+                          DropdownMenuItem(
+                              value: ProductStatus.archived,
+                              child: Text('Archived')),
+                        ],
+                        onChanged: (v) {
+                          _customValues = {
+                            ..._customValues,
+                            '__status__': v?.name ?? ProductStatus.draft.name,
+                          };
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
 
@@ -203,15 +230,8 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a price';
                           }
-                          final price = double.tryParse(value);
-                          if (price == null) {
+                          if (double.tryParse(value) == null) {
                             return 'Please enter a valid number';
-                          }
-                          if (price <= 0) {
-                            return 'Price must be greater than 0';
-                          }
-                          if (price > 10000000) {
-                            return 'Price must be less than ₹1 crore';
                           }
                           return null;
                         },
@@ -227,15 +247,8 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter MOQ';
                           }
-                          final moq = int.tryParse(value);
-                          if (moq == null) {
+                          if (int.tryParse(value) == null) {
                             return 'Please enter a valid number';
-                          }
-                          if (moq <= 0) {
-                            return 'MOQ must be greater than 0';
-                          }
-                          if (moq > 1000000) {
-                            return 'MOQ must be less than 1 million';
                           }
                           return null;
                         },
@@ -297,38 +310,32 @@ class _ProductFormPageState extends State<ProductFormPage> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Images Section
+                  // Media Section
                   const _SectionHeader(
-                    title: 'Images (max 5)',
+                    title: 'Media & Documents',
                     icon: Ionicons.images_outline,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      FilledButton.icon(
-                        onPressed: _onPickFromGallery,
-                        icon: const Icon(Ionicons.image_outline),
-                        label: const Text('Add Photos'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: _onCaptureFromCamera,
-                        icon: const Icon(Ionicons.camera_outline),
-                        label: const Text('Take Photo'),
-                      ),
-                      const Spacer(),
-                      if (_images.isNotEmpty)
-                        TextButton.icon(
-                          onPressed: () => setState(_images.clear),
-                          icon: const Icon(Ionicons.trash_outline),
-                          label: const Text('Clear All'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _ImagesGrid(
-                    images: _images,
-                    onRemove: _removeImageAt,
+
+                  MediaUploadWidget(
+                    currentImages: _images,
+                    currentDocuments: _documents,
+                    onImagesChanged: (images) {
+                      setState(() {
+                        _images.clear();
+                        _images.addAll(images);
+                      });
+                    },
+                    onDocumentsChanged: (documents) {
+                      setState(() {
+                        _documents.clear();
+                        _documents.addAll(documents);
+                      });
+                    },
+                    maxImages: 5,
+                    maxDocuments: 3,
+                    showDocuments: true,
+                    folder: 'products',
                   ),
                   const SizedBox(height: 24),
 
@@ -347,6 +354,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -356,10 +364,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
     );
   }
 
-  void _saveProduct() {
+  void _saveProduct({bool submitForApproval = false}) {
     if (!_formKey.currentState!.validate()) return;
 
-    final store = Provider.of<SellerStore>(context, listen: false);
+    final store = ref.read(sellerStoreProvider);
     final materials = _materials.isNotEmpty
         ? _materials
         : _materialsController.text
@@ -375,16 +383,27 @@ class _ProductFormPageState extends State<ProductFormPage> {
       return;
     }
 
+    final chosenCategory = (_customValues['__category__'] as String?) ??
+        (widget.product?.category ?? '');
+    // Ignore chosen status; we auto-publish
+
+    // Auto-publish: new uploads go live immediately
+    final effectiveStatus = ProductStatus.active;
+
     final product = Product(
       id: widget.product?.id ??
           DateTime.now().millisecondsSinceEpoch.toString(),
       title: _titleController.text,
       brand: _brandController.text,
       subtitle: _subtitleController.text,
+      category: chosenCategory,
       description: _descriptionController.text,
       images: _images.isNotEmpty
           ? List<String>.from(_images)
           : (widget.product?.images ?? const <String>[]),
+      documents: _documents.isNotEmpty
+          ? List<String>.from(_documents)
+          : (widget.product?.documents ?? const <String>[]),
       price: double.parse(_priceController.text),
       moq: int.parse(_moqController.text),
       gstRate: double.tryParse(_gstController.text) ?? 18.0,
@@ -394,6 +413,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
         if (_simpleFields.isNotEmpty)
           'custom': {for (final e in _simpleFields) e.key: e.value},
       },
+      status: effectiveStatus,
     );
 
     if (widget.product == null) {
@@ -409,53 +429,6 @@ class _ProductFormPageState extends State<ProductFormPage> {
     }
 
     Navigator.of(context).pop();
-  }
-
-  Future<void> _onPickFromGallery() async {
-    try {
-      final remaining = 5 - _images.length;
-      if (remaining <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Maximum 5 images allowed')),
-        );
-        return;
-      }
-      // Image picker temporarily disabled for web deployment
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image picker will be available after Firebase setup')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to pick images')),
-      );
-    }
-  }
-
-  Future<void> _onCaptureFromCamera() async {
-    try {
-      if (_images.length >= 5) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Maximum 5 images allowed')),
-        );
-        return;
-      }
-      // Camera picker temporarily disabled for web deployment
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Camera will be available after Firebase setup')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to capture image')),
-      );
-    }
-  }
-
-  void _removeImageAt(int index) {
-    setState(() {
-      if (index >= 0 && index < _images.length) {
-        _images.removeAt(index);
-      }
-    });
   }
 }
 
@@ -481,72 +454,6 @@ class _SectionHeader extends StatelessWidget {
               ),
         ),
       ],
-    );
-  }
-}
-
-class _ImagesGrid extends StatelessWidget {
-  final List<String> images;
-  final void Function(int index) onRemove;
-
-  const _ImagesGrid({required this.images, required this.onRemove});
-
-  @override
-  Widget build(BuildContext context) {
-    if (images.isEmpty) {
-      return Container(
-        height: 96,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.outlineSoft),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(child: Text('No images selected.')),
-      );
-    }
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: images.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 5,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 1,
-      ),
-      itemBuilder: (context, index) {
-        final path = images[index];
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: OptimizedImageWidget(
-                imagePath: path,
-                fit: BoxFit.cover,
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: InkWell(
-                onTap: () => onRemove(index),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  child: const Icon(
-                    Icons.close,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

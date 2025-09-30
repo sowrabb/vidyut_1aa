@@ -53,13 +53,11 @@ class KpiCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -98,13 +96,11 @@ class KpiCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

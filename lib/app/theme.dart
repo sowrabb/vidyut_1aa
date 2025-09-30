@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'tokens.dart';
 import 'typography.dart';
 
@@ -33,6 +34,7 @@ ThemeData buildVidyutTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     textTheme: buildTextTheme(),
+    fontFamily: GoogleFonts.manrope().fontFamily,
     scaffoldBackgroundColor: AppColors.surface,
     dividerColor: AppColors.divider,
     appBarTheme: const AppBarTheme(
@@ -55,7 +57,7 @@ ThemeData buildVidyutTheme() {
         borderSide: const BorderSide(color: AppColors.primary),
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: AppElevation.level1,
       color: AppColors.surface,
       shape: RoundedRectangleBorder(

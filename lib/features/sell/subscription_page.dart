@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
-import 'package:provider/provider.dart';
-import '../../features/admin/store/admin_store.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Shared subscription models surface
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
-import 'store/seller_store.dart';
+// seller store accessed via providers
+import '../../../app/provider_registry.dart';
 
-class SubscriptionPage extends StatelessWidget {
+class SubscriptionPage extends ConsumerWidget {
   const SubscriptionPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: SafeArea(
         child: ContentClamp(
@@ -35,7 +36,8 @@ class SubscriptionPage extends StatelessWidget {
                 const SizedBox(height: 32),
 
                 // Current Plan Status
-                Consumer<SellerStore>(builder: (context, sellerStore, _) {
+                Consumer(builder: (context, ref, _) {
+                  final sellerStore = ref.watch(sellerStoreProvider);
                   return Card(
                     elevation: AppElevation.level1,
                     shadowColor: AppColors.shadowSoft,
@@ -50,7 +52,7 @@ class SubscriptionPage extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.account_circle,
                                 color: AppColors.primary,
                                 size: 24,
@@ -58,16 +60,22 @@ class SubscriptionPage extends StatelessWidget {
                               const SizedBox(width: 12),
                               Text(
                                 sellerStore.getSubscriptionStatus(),
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
                           const Text('Current Usage:'),
                           const SizedBox(height: 8),
-                          ...sellerStore.getSubscriptionLimits().entries.map((entry) {
+                          ...sellerStore
+                              .getSubscriptionLimits()
+                              .entries
+                              .map((entry) {
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Row(
@@ -75,7 +83,7 @@ class SubscriptionPage extends StatelessWidget {
                                   Text('• ${entry.key}: '),
                                   Text(
                                     entry.value.toString(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.primary,
                                     ),
@@ -83,7 +91,7 @@ class SubscriptionPage extends StatelessWidget {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ),
@@ -93,24 +101,27 @@ class SubscriptionPage extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Plans Grid
-                Consumer<AdminStore>(builder: (context, store, _) {
-                  final cards = store.planCards;
+                Consumer(builder: (context, ref, _) {
+                  final cards = ref.watch(adminStoreProvider).planCards;
                   return GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: context.isDesktop ? 3 : 1,
-                  crossAxisSpacing: 24,
-                  mainAxisSpacing: 24,
-                  childAspectRatio: context.isDesktop ? 0.9 : 1.4,
-                  children: cards.map((c) => _PlanCard(
-                    title: c.title,
-                    price: c.priceLabel,
-                    period: c.periodLabel,
-                    features: c.features,
-                    isPopular: c.isPopular,
-                    onChoose: () => _showUpgradeDialog(context, c.title),
-                  )).toList(),
-                );
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: context.isDesktop ? 3 : 1,
+                    crossAxisSpacing: 24,
+                    mainAxisSpacing: 24,
+                    childAspectRatio: context.isDesktop ? 0.9 : 1.4,
+                    children: cards
+                        .map((c) => _PlanCard(
+                              title: c.title,
+                              price: c.priceLabel,
+                              period: c.periodLabel,
+                              features: c.features,
+                              isPopular: c.isPopular,
+                              onChoose: () =>
+                                  _showUpgradeDialog(context, ref, c.title),
+                            ))
+                        .toList(),
+                  );
                 }),
 
                 const SizedBox(height: 48),
@@ -171,10 +182,10 @@ class SubscriptionPage extends StatelessWidget {
     );
   }
 
-  void _showUpgradeDialog(BuildContext context, String plan) {
-    final sellerStore = context.read<SellerStore>();
+  void _showUpgradeDialog(BuildContext context, WidgetRef ref, String plan) {
+    final sellerStore = ref.read(sellerStoreProvider);
     final planKey = plan.toLowerCase();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -189,8 +200,8 @@ class SubscriptionPage extends StatelessWidget {
             Text(
               'New Limits:',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 8),
             Text('• Products: ${_getProductLimit(planKey)}'),
@@ -221,19 +232,27 @@ class SubscriptionPage extends StatelessWidget {
 
   String _getProductLimit(String plan) {
     switch (plan) {
-      case 'free': return '5 products';
-      case 'plus': return '25 products';
-      case 'pro': return '100 products';
-      default: return '5 products';
+      case 'free':
+        return '5 products';
+      case 'plus':
+        return '25 products';
+      case 'pro':
+        return '100 products';
+      default:
+        return '5 products';
     }
   }
 
   String _getAdLimit(String plan) {
     switch (plan) {
-      case 'free': return '1 ad';
-      case 'plus': return '5 ads';
-      case 'pro': return '20 ads';
-      default: return '1 ad';
+      case 'free':
+        return '1 ad';
+      case 'plus':
+        return '5 ads';
+      case 'pro':
+        return '20 ads';
+      default:
+        return '1 ad';
     }
   }
 }
@@ -322,9 +341,10 @@ class _PlanCard extends StatelessWidget {
                       if (period.isNotEmpty)
                         Text(
                           period,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                         ),
                     ],
                   ),

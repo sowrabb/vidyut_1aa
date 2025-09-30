@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app/tokens.dart';
 import 'package:ionicons/ionicons.dart';
 import 'location_picker.dart';
+import 'proper_location_picker.dart';
+import '../../location/comprehensive_location_page.dart';
 
 class LocationButton extends StatelessWidget {
   final String city;
@@ -27,19 +29,42 @@ class LocationButton extends StatelessWidget {
     final bool isPhone =
         MediaQuery.sizeOf(context).width < 768; // AppBreaks.tablet
     final label = isPhone ? city : '$areaPart, $state';
-    return TextButton.icon(
-      onPressed: () => _openPicker(context),
-      icon: const Icon(Ionicons.location_outline, color: AppColors.textPrimary),
-      label: Text(label, style: Theme.of(context).textTheme.titleSmall),
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.textPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        backgroundColor: AppColors.surfaceAlt,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: AppColors.outlineSoft),
-          borderRadius: BorderRadius.circular(999),
+    return PopupMenuButton<String>(
+      child: TextButton.icon(
+        onPressed: () => _openPicker(context),
+        icon:
+            const Icon(Ionicons.location_outline, color: AppColors.textPrimary),
+        label: Text(label, style: Theme.of(context).textTheme.titleSmall),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          backgroundColor: AppColors.surfaceAlt,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: AppColors.outlineSoft),
+            borderRadius: BorderRadius.circular(999),
+          ),
         ),
       ),
+      onSelected: (value) {
+        if (value == 'services') {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ComprehensiveLocationPage(),
+            ),
+          );
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'services',
+          child: ListTile(
+            leading: Icon(Icons.location_on),
+            title: Text('Location Services'),
+            subtitle: Text('Advanced location features'),
+            dense: true,
+          ),
+        ),
+      ],
     );
   }
 
@@ -52,10 +77,11 @@ class LocationButton extends StatelessWidget {
       result = await showDialog<LocationResult>(
         context: context,
         builder: (ctx) => Dialog(
-          child: LocationPicker(
+          child: ProperLocationPicker(
             city: city,
             state: state,
             radiusKm: radiusKm,
+            area: area,
           ),
         ),
       );
@@ -66,10 +92,11 @@ class LocationButton extends StatelessWidget {
         isScrollControlled: true,
         builder: (ctx) => Padding(
           padding: const EdgeInsets.all(16),
-          child: LocationPicker(
+          child: ProperLocationPicker(
             city: city,
             state: state,
             radiusKm: radiusKm,
+            area: area,
           ),
         ),
       );

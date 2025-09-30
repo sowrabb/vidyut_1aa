@@ -22,7 +22,7 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
   final _subtitleController = TextEditingController();
   final _ctaTextController = TextEditingController();
   final _ctaUrlController = TextEditingController();
-  
+
   String? _imagePath; // uploaded image path
   bool _isActive = true;
   int _priority = 0;
@@ -69,7 +69,9 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  widget.hero != null ? 'Edit Hero Section' : 'Add Hero Section',
+                  widget.hero != null
+                      ? 'Edit Hero Section'
+                      : 'Add Hero Section',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const Spacer(),
@@ -81,7 +83,7 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
             ),
             const Divider(),
             const SizedBox(height: 16),
-            
+
             // Form
             Expanded(
               child: Form(
@@ -93,7 +95,7 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                       // Basic Information
                       _buildSectionHeader('Basic Information'),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _titleController,
                         decoration: InputDecoration(
@@ -118,7 +120,7 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _subtitleController,
                         decoration: InputDecoration(
@@ -143,11 +145,11 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // CTA Section
                       _buildSectionHeader('Call to Action (Optional)'),
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -157,7 +159,8 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                                 labelText: 'CTA Text (Max 20 chars)',
                                 hintText: 'e.g., "Explore Now", "Get Started"',
                                 border: const OutlineInputBorder(),
-                                counterText: '${_ctaTextController.text.length}/20',
+                                counterText:
+                                    '${_ctaTextController.text.length}/20',
                               ),
                               maxLength: 20,
                               onChanged: (value) {
@@ -179,18 +182,18 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Image Upload Section
                       _buildSectionHeader('Hero Image'),
                       const SizedBox(height: 16),
-                      
+
                       _buildImageUploadSection(),
                       const SizedBox(height: 24),
-                      
+
                       // Settings
                       _buildSectionHeader('Settings'),
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -227,7 +230,7 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
                 ),
               ),
             ),
-            
+
             // Actions
             const Divider(),
             const SizedBox(height: 16),
@@ -267,7 +270,6 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
     );
   }
 
-
   Widget _buildImageUploadSection() {
     return ImageUploadWidget(
       currentImagePath: _imagePath,
@@ -291,7 +293,6 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
     );
   }
 
-
   Future<void> _saveHeroSection() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -303,8 +304,12 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
       final formData = HeroSectionFormData(
         title: _titleController.text.trim(),
         subtitle: _subtitleController.text.trim(),
-        ctaText: _ctaTextController.text.trim().isEmpty ? null : _ctaTextController.text.trim(),
-        ctaUrl: _ctaUrlController.text.trim().isEmpty ? null : _ctaUrlController.text.trim(),
+        ctaText: _ctaTextController.text.trim().isEmpty
+            ? null
+            : _ctaTextController.text.trim(),
+        ctaUrl: _ctaUrlController.text.trim().isEmpty
+            ? null
+            : _ctaUrlController.text.trim(),
         imagePath: _imagePath, // For file-based platforms
         priority: _priority,
         isActive: _isActive,
@@ -317,13 +322,13 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
       );
 
       widget.onSave(heroSection);
-      
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              widget.hero != null 
+              widget.hero != null
                   ? 'Hero section updated successfully'
                   : 'Hero section created successfully',
             ),
@@ -334,7 +339,7 @@ class _HeroSectionEditorState extends State<HeroSectionEditor> {
       setState(() {
         _isLoading = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

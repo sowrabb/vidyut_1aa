@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function hasRole(role) {
+      return request.auth.token.roles != null && role in request.auth.token.roles;
+    }
+    function isOwner(ownerId) {
+      return isSignedIn() && ownerId == uid();
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (uid() == userId || hasRole('admin') || hasRole('support'));
+      allow create: if isSignedIn() && uid() == userId;
+      allow update: if isSignedIn() && (uid() == userId || hasRole('admin'));
+      allow delete: if hasRole('admin');
+    }
+
+    match /seller_profiles/{sellerId} {
+      allow read: if true; // public profile
+      allow create, update: if isOwner(sellerId) || hasRole('admin');
+      allow delete: if hasRole('admin');
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (request.resource.data.seller_id == uid() || hasRole('admin'));
+    }
+
+    match /leads/{leadId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.created_by == uid() || hasRole('admin'));
+    }
+
+    match /conversations/{convId} {
+      allow read, list: if isSignedIn() && (uid() in resource.data.participants || hasRole('support') || hasRole('admin'));
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (uid() in resource.data.participants || hasRole('admin'));
+
+      match /messages/{msgId} {
+        allow read: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.participants || hasRole('support') || hasRole('admin'));
+        allow create: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.participants);
+        allow update, delete: if false; // immutable after send
+      }
+    }
+
+    match /categories/{catId} {
+      allow read: if true;
+      allow create, update, delete: if hasRole('admin');
+    }
+
+    match /hero_sections/{id} {
+      allow read: if true;
+      allow create, update, delete: if hasRole('admin') || hasRole('marketing');
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (resource.data.user_id == uid() || hasRole('admin'));
+      allow create: if isSignedIn() && request.resource.data.user_id == uid();
+      allow update: if hasRole('admin');
+      allow delete: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isSignedIn() && (resource.data.user_id == uid() || hasRole('admin'));
+      allow create, update, delete: if hasRole('admin');
+    }
+
+    match /notification_templates/{id} {
+      allow read: if hasRole('admin') || hasRole('marketing');
+      allow create, update, delete: if hasRole('admin') || hasRole('marketing');
+    }
+
+    // Notification jobs - admin only
+    match /notification_jobs/{jobId} {
+      allow read: if hasRole('admin');
+      allow create: if hasRole('admin');
+      allow update: if hasRole('admin');
+      allow delete: if hasRole('admin');
+    }
+
+    // Per-user inbox - user can read only own inbox; no client writes
+    match /users/{userId}/inbox/{notifId} {
+      allow read: if isSignedIn() && uid() == userId;
+      allow create, update, delete: if false;
+    }
+
+    match /power_generators/{id} {
+      allow read: if true;
+      allow create, update, delete: if hasRole('admin');
+    }
+  }
+}

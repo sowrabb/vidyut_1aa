@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'categories_page.dart';
 import '../../app/app_state.dart';
-import '../../services/demo_data_service.dart';
+import '../../services/lightweight_demo_data_service.dart';
 
 class CategoriesStore extends ChangeNotifier {
   final AppState _appState;
-  final DemoDataService _demoDataService;
+  final LightweightDemoDataService _demoDataService;
   String query = '';
   final Set<String> selectedIndustries = {};
   final Set<String> selectedMaterials = {};
   CategorySortBy sortBy = CategorySortBy.name;
-  
+
   // Location properties that delegate to AppState
   String get city => _appState.city;
   String get state => _appState.state;
@@ -21,30 +21,30 @@ class CategoriesStore extends ChangeNotifier {
 
   List<CategoryData> _filteredCategories = [];
   List<CategoryData> get filteredCategories => _filteredCategories;
-  
+
   late final VoidCallback _locationChangeListener;
   late final VoidCallback _demoDataChangeListener;
 
   CategoriesStore(this._appState, this._demoDataService) {
     _filteredCategories = List.of(_allCategories);
     _applyFilters();
-    
+
     // Listen to location changes from AppState
     _locationChangeListener = () => _refreshCategories();
     _appState.addLocationChangeListener(_locationChangeListener);
-    
+
     // Listen to demo data changes from DemoDataService
     _demoDataChangeListener = () => _refreshCategories();
     _demoDataService.addListener(_demoDataChangeListener);
   }
-  
+
   @override
   void dispose() {
     _appState.removeLocationChangeListener(_locationChangeListener);
     _demoDataService.removeListener(_demoDataChangeListener);
     super.dispose();
   }
-  
+
   void _refreshCategories() {
     // Categories can be filtered based on location in the future
     // For now, just trigger a refresh

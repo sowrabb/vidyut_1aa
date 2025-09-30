@@ -50,7 +50,7 @@ class CategoriesGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 768; // AppBreakpoints.tablet
-        
+
         if (isMobile) {
           // Mobile: Single row horizontal scroll
           return SizedBox(
@@ -67,7 +67,8 @@ class CategoriesGrid extends StatelessWidget {
                   ),
                   child: ResponsiveCategoryCard(
                     category: _categories[index],
-                    onTap: () => _navigateToCategory(context, _categories[index]),
+                    onTap: () =>
+                        _navigateToCategory(context, _categories[index]),
                   ),
                 );
               },
@@ -90,7 +91,6 @@ class CategoriesGrid extends StatelessWidget {
       },
     );
   }
-
 
   void _navigateToCategory(BuildContext context, CategoryData category) {
     Navigator.of(context).push(

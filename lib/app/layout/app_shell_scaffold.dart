@@ -4,6 +4,7 @@ import '../tokens.dart';
 import '../breakpoints.dart';
 import 'responsive_scaffold.dart';
 import '../../widgets/auto_hide_scaffold.dart';
+import '../../features/about/about_page.dart';
 
 class AppShellScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
@@ -69,7 +70,8 @@ class AppShellScaffold extends StatelessWidget {
     void goToRoot(int i) {
       final actualIndex = indexMap[i];
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => ResponsiveScaffold(initialIndex: actualIndex)),
+        MaterialPageRoute(
+            builder: (_) => ResponsiveScaffold(initialIndex: actualIndex)),
         (route) => false,
       );
     }
@@ -131,9 +133,8 @@ class AppShellScaffold extends StatelessWidget {
     }
 
     // For mobile, map the selectedIndex to the correct position in the filtered destinations
-    final mobileSelectedIndex = isDesktop 
-        ? selectedIndex 
-        : indexMap.indexOf(selectedIndex);
+    final mobileSelectedIndex =
+        isDesktop ? selectedIndex : indexMap.indexOf(selectedIndex);
 
     return AutoHideScaffold(
       backgroundColor: AppColors.surface,
@@ -231,6 +232,17 @@ class VidyutAppBar extends StatelessWidget implements PreferredSizeWidget {
             )
           : buildLogoTitle(),
       actions: [
+        if (isDesktop)
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AboutPage(),
+                ),
+              );
+            },
+            child: const Text('About Us'),
+          ),
         if (trailing != null)
           Padding(
             padding: const EdgeInsets.only(right: 8),

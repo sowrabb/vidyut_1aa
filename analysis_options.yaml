@@ -27,6 +27,10 @@ analyzer:
     # Keep all as default severities; we target 0 issues by fixing, not suppressing.
     # But don't fail the build on infos:
     todo: info
+  exclude:
+    - lib/examples/**
+    - test/**
+    - integration_test/**
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

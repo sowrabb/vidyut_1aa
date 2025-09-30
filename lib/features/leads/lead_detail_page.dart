@@ -11,7 +11,7 @@ class LeadDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final double logoSize = 112;
+    const double logoSize = 112;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -61,7 +61,7 @@ class LeadDetailPage extends StatelessWidget {
     final statsMeta = [
       _Badge('₹${lead.turnoverCr.toStringAsFixed(0)} Cr'),
       _Meta('${lead.materials.length} Materials'),
-      _Meta('Active Lead'),
+      const _Meta('Active Lead'),
     ];
 
     return Padding(
@@ -234,7 +234,7 @@ class LeadDetailPage extends StatelessWidget {
                   .map((m) => Chip(
                         label: Text(m),
                         backgroundColor: AppColors.primarySurface,
-                        labelStyle: TextStyle(color: AppColors.primary),
+                        labelStyle: const TextStyle(color: AppColors.primary),
                       ))
                   .toList(),
             ),

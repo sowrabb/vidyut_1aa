@@ -1,38 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/tokens.dart';
-import '../store/state_info_store.dart';
+import '../../../app/provider_registry.dart';
 import '../models/state_info_models.dart';
 import 'responsive_layout.dart';
 
-class SelectionScreen extends StatelessWidget {
+class SelectionScreen extends ConsumerWidget {
   const SelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<StateInfoStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(stateInfoStoreProvider);
     final isMobile = ResponsiveLayout.isMobile(context);
-    
+
     return SingleChildScrollView(
-      padding: ResponsiveLayout.getScreenPadding(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: isMobile ? 16 : 24),
-          
-          // Header Section
-          _HeaderSection(isMobile: isMobile),
-          
-          SizedBox(height: isMobile ? 24 : 32),
-          
-          // Flow Selection Cards
-          if (isMobile)
-            _MobileFlowSelection(store: store)
-          else
-            _DesktopFlowSelection(store: store),
-          
-          SizedBox(height: isMobile ? 16 : 24),
-        ],
+      child: Padding(
+        padding: ResponsiveLayout.getScreenPadding(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(height: isMobile ? 8 : 12),
+
+            // Header Section
+            _HeaderSection(isMobile: isMobile),
+
+            SizedBox(height: isMobile ? 12 : 16),
+
+            // Flow Selection Cards
+            if (isMobile)
+              _MobileFlowSelection(store: store)
+            else
+              _DesktopFlowSelection(store: store),
+
+            SizedBox(height: isMobile ? 8 : 12),
+          ],
+        ),
       ),
     );
   }
@@ -50,18 +52,18 @@ class _HeaderSection extends StatelessWidget {
         Text(
           'Choose Information Flow',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: isMobile ? 24 : 32,
-          ),
+                fontWeight: FontWeight.bold,
+                fontSize: isMobile ? 24 : 32,
+              ),
           textAlign: TextAlign.center,
         ),
         SizedBox(height: isMobile ? 8 : 12),
         Text(
           'Select how you want to explore India\'s electricity infrastructure',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: AppColors.textSecondary,
-            fontSize: isMobile ? 16 : 18,
-          ),
+                color: AppColors.textSecondary,
+                fontSize: isMobile ? 16 : 18,
+              ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -69,13 +71,13 @@ class _HeaderSection extends StatelessWidget {
   }
 }
 
-class _MobileFlowSelection extends StatelessWidget {
-  final StateInfoStore store;
+class _MobileFlowSelection extends ConsumerWidget {
+  final dynamic store;
 
   const _MobileFlowSelection({required this.store});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         _FlowSelectionCard(
@@ -114,15 +116,15 @@ class _MobileFlowSelection extends StatelessWidget {
   }
 }
 
-class _DesktopFlowSelection extends StatelessWidget {
-  final StateInfoStore store;
+class _DesktopFlowSelection extends ConsumerWidget {
+  final dynamic store;
 
   const _DesktopFlowSelection({required this.store});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
-      height: 500,
+      height: 400,
       child: Row(
         children: [
           Expanded(
@@ -195,26 +197,26 @@ class _FlowSelectionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(isMobile ? 16 : 12),
         child: Padding(
-          padding: EdgeInsets.all(isMobile ? 20 : 24),
+          padding: EdgeInsets.all(isMobile ? 16 : 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
               _buildHeader(context),
-              
+
               SizedBox(height: isMobile ? 16 : 20),
-              
+
               // Flow Description
               _buildFlowDescription(context),
-              
+
               SizedBox(height: isMobile ? 16 : 20),
-              
+
               // Features List
               if (isMobile)
                 _buildMobileFeatures(context)
               else
                 _buildDesktopFeatures(context),
-              
+
               // Action hint for mobile
               if (isMobile) ...[
                 const SizedBox(height: 16),
@@ -233,7 +235,7 @@ class _FlowSelectionCard extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(isMobile ? 16 : 12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(isMobile ? 16 : 12),
           ),
           child: Icon(
@@ -250,23 +252,23 @@ class _FlowSelectionCard extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 20 : 24,
-                ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMobile ? 20 : 24,
+                    ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: isMobile ? 14 : 16,
-                ),
+                      color: AppColors.textSecondary,
+                      fontSize: isMobile ? 14 : 16,
+                    ),
               ),
             ],
           ),
         ),
         if (!isMobile)
-          Icon(
+          const Icon(
             Icons.arrow_forward_ios,
             color: AppColors.textSecondary,
             size: 16,
@@ -279,9 +281,9 @@ class _FlowSelectionCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(isMobile ? 16 : 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(isMobile ? 12 : 8),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -295,10 +297,10 @@ class _FlowSelectionCard extends StatelessWidget {
             child: Text(
               description,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: color,
-                fontSize: isMobile ? 16 : 14,
-              ),
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                    fontSize: isMobile ? 16 : 14,
+                  ),
             ),
           ),
         ],
@@ -313,42 +315,42 @@ class _FlowSelectionCard extends StatelessWidget {
         Text(
           'What you\'ll explore:',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
         ),
         const SizedBox(height: 12),
         ...features.take(3).map((feature) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      feature,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  feature,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
-        )),
+            )),
         if (features.length > 3)
           Text(
             '... and more',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontStyle: FontStyle.italic,
-              color: AppColors.textSecondary,
-            ),
+                  fontStyle: FontStyle.italic,
+                  color: AppColors.textSecondary,
+                ),
           ),
       ],
     );
@@ -362,35 +364,35 @@ class _FlowSelectionCard extends StatelessWidget {
           Text(
             'What you\'ll explore:',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
           ),
           const SizedBox(height: 8),
           ...features.map((feature) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 6),
-                  width: 4,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    feature,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-          )),
+              )),
         ],
       ),
     );
@@ -400,7 +402,7 @@ class _FlowSelectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -409,9 +411,9 @@ class _FlowSelectionCard extends StatelessWidget {
           Text(
             'Tap to explore',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
           const SizedBox(width: 8),
           Icon(

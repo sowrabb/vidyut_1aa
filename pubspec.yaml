@@ -2,7 +2,7 @@ name: vidyut
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.3 <4.0.0'
+  sdk: ">=3.2.3 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -33,28 +33,47 @@ dependencies:
 
   # Core dependencies
   cupertino_icons: ^1.0.2
-  provider: ^6.1.2
-  
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
   # UI dependencies
   ionicons: ^0.2.2
   google_fonts: ^6.2.1
-  
+  flutter_staggered_grid_view: ^0.7.0
+
   # Functionality dependencies
   url_launcher: ^6.3.0
   shared_preferences: ^2.2.3
-  
+
+  # Firebase dependencies
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.3
+  firebase_storage: ^12.3.2
+  cloud_functions: ^5.1.3
+
+  # Security
+  crypto: ^3.0.3
+
   # Location and mapping (used in profile settings)
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
   geolocator: ^10.1.0
   http: ^1.2.2
-  
+  permission_handler: ^11.3.1
+
+  # Charts and analytics
+  fl_chart: ^0.69.0
+
   # Image handling (minimal usage)
   extended_image: ^8.0.0
   image_picker: ^1.0.7
   file_picker: ^6.1.1
   path_provider: ^2.1.2
+  share_plus: ^10.0.2
   flutter_image_compress: ^2.3.0
+  pdfx: ^2.6.0
+  photo_view: ^0.15.0
 
 dev_dependencies:
   flutter_test:
@@ -66,35 +85,32 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^3.0.0
+  build_runner: ^2.4.11
+  riverpod_generator: ^2.4.0
+  mockito: ^5.4.4
+  integration_test:
+    sdk: flutter
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
 
-  # Optimized assets - only include what's actually used
+  # Optimized assets - use glob patterns for easier management
   assets:
     - assets/logo.png
     - assets/banner/
-    - assets/demo-images/wires-cables/wire01.jpeg
-    - assets/demo-images/wires-cables/wire02.jpeg
-    - assets/demo-images/wires-cables/wire03.jpeg
-    - assets/demo-images/wires-cables/wire04.jpeg
-    - assets/demo-images/wires-cables/wire05.jpeg
-    - assets/demo-images/wires-cables/wire06.jpeg
-    - assets/demo-images/wires-cables/wire07.jpeg
-    - assets/demo-images/wires-cables/wire08.jpeg
-    - assets/demo-images/wires-cables/wire09.jpeg
-    - assets/demo-images/circuit-breakers/breaker01.jpeg
-    - assets/demo-images/lights/light01.jpeg
-    - assets/demo-images/motors/motor01.jpeg
-    - assets/demo-images/tools/tool01.jpeg
+    - assets/demo-images/circuit-breakers/
+    - assets/demo-images/lights/
+    - assets/demo-images/motors/
+    - assets/demo-images/tools/
+    - assets/demo-images/wires-cables/
+    - assets/demo-csv/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

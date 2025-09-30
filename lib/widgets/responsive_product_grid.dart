@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'responsive_grid.dart';
-import 'responsive_product_card.dart';
+// Import fixed: our grid uses the existing landscape card for all sizes
 import 'landscape_product_card.dart';
+import '../features/home/widgets/product_card.dart';
 import '../app/breakpoints.dart';
 
-/// Enhanced responsive product grid that automatically switches between 
+/// Enhanced responsive product grid that automatically switches between
 /// grid and landscape layouts based on screen size
 class ResponsiveProductGrid extends StatelessWidget {
   final List<ProductCardData> products;
@@ -25,7 +26,7 @@ class ResponsiveProductGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < AppBreakpoints.tablet;
-        
+
         if (isMobile) {
           // Mobile: Use landscape cards in a list
           return ListView.builder(
@@ -54,14 +55,14 @@ class ResponsiveProductGrid extends StatelessWidget {
             },
           );
         } else {
-          // Desktop/Tablet: Use regular grid cards
+          // Desktop/Tablet: Use regular grid layout with vertical ProductCard
           return ResponsiveGrid(
             gridType: ResponsiveGridType.product,
             shrinkWrap: shrinkWrap,
             physics: physics,
             padding: padding,
             children: products.map((product) {
-              return ResponsiveProductCard(
+              return ProductCard(
                 productId: product.productId,
                 title: product.title,
                 brand: product.brand,
@@ -74,8 +75,6 @@ class ResponsiveProductGrid extends StatelessWidget {
                 discountPercentage: product.discountPercentage,
                 isAvailable: product.isAvailable,
                 onTap: product.onTap,
-                onCallPressed: product.onCallPressed,
-                onWhatsAppPressed: product.onWhatsAppPressed,
               );
             }).toList(),
           );

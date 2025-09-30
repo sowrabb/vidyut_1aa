@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/tokens.dart';
+import 'firebase_auth_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -13,7 +14,7 @@ class _AuthPageState extends State<AuthPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  
+
   bool _isLogin = true;
   bool _isLoading = false;
   String _selectedRole = 'buyer';
@@ -37,7 +38,9 @@ class _AuthPageState extends State<AuthPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isLogin ? 'Signed in successfully!' : 'Account created successfully!'),
+          content: Text(_isLogin
+              ? 'Signed in successfully!'
+              : 'Account created successfully!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -80,22 +83,25 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Title
                       Text(
                         _isLogin ? 'Welcome Back' : 'Create Account',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _isLogin 
-                          ? 'Sign in to your Vidyut account'
-                          : 'Join the electrical marketplace',
+                        _isLogin
+                            ? 'Sign in to your Vidyut account'
+                            : 'Join the electrical marketplace',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                              color: AppColors.textSecondary,
+                            ),
                       ),
                       const SizedBox(height: 32),
 
@@ -203,7 +209,8 @@ class _AuthPageState extends State<AuthPage> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                   ),
                                 )
                               : Text(
@@ -213,6 +220,27 @@ class _AuthPageState extends State<AuthPage> {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Firebase Auth button
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const FirebaseAuthPage(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.cloud),
+                          label: const Text('Use Firebase Authentication'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -228,7 +256,7 @@ class _AuthPageState extends State<AuthPage> {
                           _isLogin
                               ? "Don't have an account? Sign up"
                               : "Already have an account? Sign in",
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w500,
                           ),

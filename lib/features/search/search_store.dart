@@ -32,12 +32,12 @@ class SearchStore extends ChangeNotifier {
   List<MaterialProfile> get profilesResults => _profilesResults;
 
   Timer? _debounce;
-  
+
   // Location properties that delegate to AppState
   String get city => _appState.city;
   String get state => _appState.state;
   double get radiusKm => _appState.radiusKm;
-  
+
   late final VoidCallback _locationChangeListener;
 
   SearchStore(this._all, this._appState) {
@@ -51,12 +51,12 @@ class SearchStore extends ChangeNotifier {
         .map((e) => MaterialProfile(name: e.key, materials: e.value.toList()))
         .toList();
     _profilesResults = List.of(_profilesAll);
-    
+
     // Listen to location changes from AppState
     _locationChangeListener = () => _refresh(immediate: true);
     _appState.addLocationChangeListener(_locationChangeListener);
   }
-  
+
   @override
   void dispose() {
     _appState.removeLocationChangeListener(_locationChangeListener);

@@ -1,0 +1,76 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function uid() {
+      return request.auth.uid;
+    }
+    
+    function isValidImageType() {
+      return resource.contentType.matches('image/.*');
+    }
+    
+    function isValidPdfType() {
+      return resource.contentType == 'application/pdf';
+    }
+    
+    function isValidFileSize() {
+      return resource.size < 50 * 1024 * 1024; // 50MB limit
+    }
+    
+    function isValidImageSize() {
+      return resource.size < 10 * 1024 * 1024; // 10MB limit for images
+    }
+    
+    // StateInfo profile media files
+    // Path pattern: stateInfo/{entityType}/{entityId}/{subType}/{fileId}
+    // entityType: power_generator, transmission_line, distribution_company, state, mandal
+    // subType: posts, product_designs
+    match /stateInfo/{entityType}/{entityId}/{subType}/{fileId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && 
+                      (subType == 'posts' || subType == 'product_designs') &&
+                      isValidFileSize();
+      allow delete: if isSignedIn(); // Allow deletion for cleanup
+    }
+
+    // Posts media files - authenticated users can upload/read, only owners can delete
+    match /posts/{postId}/{mediaType}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && 
+                      (mediaType == 'images' || mediaType == 'pdfs') &&
+                      (mediaType == 'images' ? isValidImageType() : isValidPdfType()) &&
+                      (mediaType == 'images' ? isValidImageSize() : isValidFileSize());
+      allow delete: if isSignedIn(); // Allow deletion for cleanup
+    }
+    
+    // Product images - readable by all authenticated users
+    match /product_images/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidImageType() && isValidImageSize();
+    }
+    
+    // User images - readable by all authenticated users
+    match /user_images/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidImageType() && isValidImageSize();
+    }
+    
+    // Documents - readable by all authenticated users
+    match /documents/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidFileSize();
+    }
+    
+    // Legacy support for existing paths
+    match /{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidFileSize();
+    }
+  }
+}
+

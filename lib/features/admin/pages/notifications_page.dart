@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../store/admin_store.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/provider_registry.dart';
 import '../models/notification.dart' as notif;
+import '../auth/permission_gate.dart';
 
-class NotificationsPage extends StatefulWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  State<NotificationsPage> createState() => _NotificationsPageState();
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageState extends State<NotificationsPage> {
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,69 +20,95 @@ class _NotificationsPageState extends State<NotificationsPage> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         actions: [
-          FilledButton.icon(
-            onPressed: _openCreateWizard,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Notification'),
+          PermissionGate(
+            permission: 'notifications.send',
+            child: FilledButton.icon(
+              onPressed: _openCreateWizard,
+              icon: const Icon(Icons.add),
+              label: const Text('Create Notification'),
+            ),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: Consumer<AdminStore>(
-        builder: (context, store, _) {
-          final drafts = store.notificationDrafts;
-          final templates = store.notificationTemplates;
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Drafts', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                if (drafts.isEmpty)
-                  const Text('No drafts yet'),
-                if (drafts.isNotEmpty)
-                  ...drafts.map((d) => Card(
-                        child: ListTile(
-                          title: Text('Draft ${d.id} • ${d.type.name}'),
-                          subtitle: Text('${d.channels.map((e)=>e.name).join(', ')} • audience ~${store.estimateAudienceSize(d.audience)}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
+      body: Consumer(builder: (context, ref, _) {
+        final store = ref.watch(adminStoreProvider);
+        final drafts = store.notificationDrafts;
+        final templates = store.notificationTemplates;
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TODO: Add currentNotificationJob and currentNotificationJobId to AdminStore
+              // if (store.currentNotificationJob != null)
+              //   Card(
+              //     color: Colors.blue.shade50,
+              //     child: ListTile(
+              //       leading: const Icon(Icons.sync),
+              //       title: Text(
+              //           'Job ${store.currentNotificationJobId ?? ''} • ${store.currentNotificationJob?['status'] ?? 'queued'}'),
+              //       subtitle: Builder(builder: (_) {
+              //         final counts =
+              //             (store.currentNotificationJob?['counts'] as Map?) ?? {};
+              //         final est = counts['estimated'] ?? 0;
+              //         final targeted = counts['targeted'] ?? 0;
+              //         final succ = counts['succeeded'] ?? 0;
+              //         final fail = counts['failed'] ?? 0;
+              //         return Text(
+              //             'estimated: $est • targeted: $targeted • succeeded: $succ • failed: $fail');
+              //       }),
+              //     ),
+              //   ),
+              const SizedBox(height: 8),
+              Text('Drafts', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              if (drafts.isEmpty) const Text('No drafts yet'),
+              if (drafts.isNotEmpty)
+                ...drafts.map((d) => Card(
+                      child: ListTile(
+                        title: Text('Draft ${d.id} • ${d.type.name}'),
+                        subtitle: Text(
+                            '${d.channels.map((e) => e.name).join(', ')} • audience ~${store.estimateAudienceSize(d.audience)}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PermissionGate(
+                              permission: 'notifications.send',
+                              child: IconButton(
                                 icon: const Icon(Icons.play_arrow),
                                 tooltip: 'Send now',
                                 onPressed: () => store.sendNotification(d),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => store.deleteNotificationDraft(d.id),
-                              ),
-                            ],
-                          ),
-                          onTap: () => _openCreateWizard(existing: d),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () =>
+                                  store.deleteNotificationDraft(d.id),
+                            ),
+                          ],
                         ),
-                      )),
-                const SizedBox(height: 24),
-                Text('Templates', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                if (templates.isEmpty)
-                  const Text('No templates'),
-                if (templates.isNotEmpty)
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: templates
-                        .map((t) => Chip(
-                              label: Text('${t.name} • ${t.channel.name}'),
-                            ))
-                        .toList(),
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
+                        onTap: () => _openCreateWizard(existing: d),
+                      ),
+                    )),
+              const SizedBox(height: 24),
+              Text('Templates', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              if (templates.isEmpty) const Text('No templates'),
+              if (templates.isNotEmpty)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: templates
+                      .map((t) => Chip(
+                            label: Text('${t.name} • ${t.channel.name}'),
+                          ))
+                      .toList(),
+                ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
@@ -94,20 +121,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 }
 
-class _NotificationWizard extends StatefulWidget {
+class _NotificationWizard extends ConsumerStatefulWidget {
   final notif.NotificationDraft? existing;
   const _NotificationWizard({this.existing});
 
   @override
-  State<_NotificationWizard> createState() => _NotificationWizardState();
+  ConsumerState<_NotificationWizard> createState() =>
+      _NotificationWizardState();
 }
 
-class _NotificationWizardState extends State<_NotificationWizard> {
+class _NotificationWizardState extends ConsumerState<_NotificationWizard> {
   int step = 0;
   late notif.NotificationType type;
   Set<notif.NotificationChannel> channels = {notif.NotificationChannel.inApp};
   notif.AudienceFilter audience = const notif.AudienceFilter();
-  final Map<notif.NotificationChannel, notif.NotificationTemplate> templates = {};
+  final Map<notif.NotificationChannel, notif.NotificationTemplate> templates =
+      {};
   DateTime? scheduledAt;
   bool respectQuiet = true;
 
@@ -151,7 +180,9 @@ class _NotificationWizardState extends State<_NotificationWizard> {
               title: const Text('Create Notification'),
               automaticallyImplyLeading: false,
               actions: [
-                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close)),
               ],
             ),
             Expanded(
@@ -190,8 +221,8 @@ class _NotificationWizardState extends State<_NotificationWizard> {
   }
 
   Widget _buildAudience() {
-    final store = Provider.of<AdminStore>(context, listen: false);
-    final roles = const ['admin','seller','buyer'];
+    final store = ref.read(adminStoreProvider);
+    const roles = ['admin', 'seller', 'buyer'];
     final states = store.geo.keys.toList();
     final userIdsStr = audience.userIds.join(',');
     _userIdsCtrl.text = userIdsStr;
@@ -218,12 +249,18 @@ class _NotificationWizardState extends State<_NotificationWizard> {
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           value: null,
-          items: states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+          items: states
+              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+              .toList(),
           onChanged: (val) {
             if (val == null) return;
             setState(() {
               final s = {...audience.states};
-              if (s.contains(val)) s.remove(val); else s.add(val);
+              if (s.contains(val)) {
+                s.remove(val);
+              } else {
+                s.add(val);
+              }
               audience = audience.copyWith(states: s);
             });
           },
@@ -235,7 +272,8 @@ class _NotificationWizardState extends State<_NotificationWizard> {
             const Text('Only Sellers'),
             Switch(
               value: audience.isSeller ?? false,
-              onChanged: (v) => setState(() => audience = audience.copyWith(isSeller: v)),
+              onChanged: (v) =>
+                  setState(() => audience = audience.copyWith(isSeller: v)),
             ),
           ],
         ),
@@ -247,7 +285,11 @@ class _NotificationWizardState extends State<_NotificationWizard> {
             border: OutlineInputBorder(),
           ),
           onChanged: (v) {
-            final ids = v.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+            final ids = v
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toSet();
             setState(() => audience = audience.copyWith(userIds: ids));
           },
         ),
@@ -263,24 +305,29 @@ class _NotificationWizardState extends State<_NotificationWizard> {
       children: [
         Wrap(
           spacing: 8,
-          children: notif.NotificationChannel.values.map((c) => FilterChip(
-                label: Text(c.name),
-                selected: channels.contains(c),
-                onSelected: (v) => setState(() {
-                  v ? channels.add(c) : channels.remove(c);
-                }),
-              )).toList(),
+          children: notif.NotificationChannel.values
+              .where((c) => c == notif.NotificationChannel.inApp)
+              .map((c) => FilterChip(
+                    label: Text(c.name),
+                    selected: channels.contains(c),
+                    onSelected: (v) => setState(() {
+                      v ? channels.add(c) : channels.remove(c);
+                    }),
+                  ))
+              .toList(),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _titleCtrl,
-          decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+              labelText: 'Title', border: OutlineInputBorder()),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _bodyCtrl,
           maxLines: 5,
-          decoration: const InputDecoration(labelText: 'Body', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+              labelText: 'Body', border: OutlineInputBorder()),
         ),
       ],
     );
@@ -293,7 +340,9 @@ class _NotificationWizardState extends State<_NotificationWizard> {
         Row(
           children: [
             const Text('Respect quiet hours'),
-            Switch(value: respectQuiet, onChanged: (v) => setState(() => respectQuiet = v)),
+            Switch(
+                value: respectQuiet,
+                onChanged: (v) => setState(() => respectQuiet = v)),
           ],
         ),
         const SizedBox(height: 8),
@@ -314,17 +363,29 @@ class _NotificationWizardState extends State<_NotificationWizard> {
                   lastDate: now.add(const Duration(days: 365)),
                   initialDate: now,
                 );
+                if (!mounted) return;
                 if (picked != null) {
-                  final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (!mounted) return;
                   if (time != null) {
                     setState(() {
-                      scheduledAt = DateTime(picked.year, picked.month, picked.day, time.hour, time.minute);
+                      scheduledAt = DateTime(
+                        picked.year,
+                        picked.month,
+                        picked.day,
+                        time.hour,
+                        time.minute,
+                      );
                     });
                   }
                 }
               },
               icon: const Icon(Icons.schedule),
-              label: Text(scheduledAt == null ? 'Schedule' : 'Scheduled: $scheduledAt'),
+              label: Text(
+                  scheduledAt == null ? 'Schedule' : 'Scheduled: $scheduledAt'),
             ),
           ],
         )
@@ -333,13 +394,13 @@ class _NotificationWizardState extends State<_NotificationWizard> {
   }
 
   Widget _buildReview() {
-    final store = Provider.of<AdminStore>(context, listen: false);
+    final store = ref.read(adminStoreProvider);
     final draft = _buildDraft();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Type: ${draft.type.name}'),
-        Text('Channels: ${draft.channels.map((e)=>e.name).join(', ')}'),
+        Text('Channels: ${draft.channels.map((e) => e.name).join(', ')}'),
         Text('Audience: ~${store.estimateAudienceSize(draft.audience)} users'),
         Text('Schedule: ${draft.scheduledAt?.toIso8601String() ?? 'Now'}'),
         const SizedBox(height: 12),
@@ -349,7 +410,8 @@ class _NotificationWizardState extends State<_NotificationWizard> {
               onPressed: () async {
                 await store.saveNotificationDraft(draft);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft saved')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Draft saved')));
                   Navigator.pop(context);
                 }
               },
@@ -361,7 +423,8 @@ class _NotificationWizardState extends State<_NotificationWizard> {
                 await store.saveNotificationDraft(draft);
                 await store.sendNotification(draft);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification queued')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Notification queued')));
                   Navigator.pop(context);
                 }
               },
@@ -383,8 +446,10 @@ class _NotificationWizardState extends State<_NotificationWizard> {
   }
 
   notif.NotificationDraft _buildDraft() {
-    final id = widget.existing?.id ?? 'draft_${DateTime.now().millisecondsSinceEpoch}';
-    final selectedChannels = channels.isEmpty ? {notif.NotificationChannel.inApp} : channels;
+    final id =
+        widget.existing?.id ?? 'draft_${DateTime.now().millisecondsSinceEpoch}';
+    final selectedChannels =
+        channels.isEmpty ? {notif.NotificationChannel.inApp} : channels;
     final Map<notif.NotificationChannel, notif.NotificationTemplate> tmpl = {
       for (final c in selectedChannels)
         c: notif.NotificationTemplate(
@@ -406,5 +471,3 @@ class _NotificationWizardState extends State<_NotificationWizard> {
     );
   }
 }
-
-

@@ -1,73 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import '../../app/breakpoints.dart';
-import '../../app/app_state.dart';
-import '../../services/demo_data_service.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/responsive_category_card.dart';
-import 'categories_store.dart';
+import '../../widgets/multi_select_dropdown.dart';
+import 'categories_notifier.dart';
 import 'category_detail_page.dart';
 
-class CategoriesPage extends StatelessWidget {
+class CategoriesPage extends ConsumerWidget {
   const CategoriesPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => CategoriesStore(context.read<AppState>(), context.read<DemoDataService>()),
-      builder: (context, _) {
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          body: SafeArea(
-            child: ContentClamp(
-              child: LayoutBuilder(
-                builder: (context, bc) {
-                  final isDesktop = bc.maxWidth >= AppBreakpoints.desktop;
-                  return CustomScrollView(
-                    slivers: [
-                      const SliverToBoxAdapter(child: _SearchBar()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                      if (isDesktop)
-                        const SliverToBoxAdapter(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 280,
-                                child: _FiltersPanel(sticky: true),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(child: _CategoriesGrid()),
-                            ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: ContentClamp(
+          child: LayoutBuilder(
+            builder: (context, bc) {
+              final isDesktop = bc.maxWidth >= AppBreakpoints.desktop;
+              return CustomScrollView(
+                slivers: [
+                  const SliverToBoxAdapter(child: _SearchBar()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  if (isDesktop)
+                    const SliverToBoxAdapter(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 280,
+                            child: _FiltersPanel(sticky: true),
                           ),
-                        )
-                      else
-                        SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _openFiltersSheet(context),
-                                  icon: const Icon(Icons.tune),
-                                  label: const Text('Filters'),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const _CategoriesGrid(),
-                            ],
+                          SizedBox(width: 16),
+                          Expanded(child: _CategoriesGrid()),
+                        ],
+                      ),
+                    )
+                  else
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _openFiltersSheet(context),
+                              icon: const Icon(Icons.tune),
+                              label: const Text('Filters'),
+                            ),
                           ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
+                          const SizedBox(height: 12),
+                          const _CategoriesGrid(),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -84,12 +78,13 @@ class CategoriesPage extends StatelessWidget {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends ConsumerWidget {
   const _SearchBar();
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<CategoriesStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(categoriesNotifierProvider.notifier);
+    final state = ref.watch(categoriesNotifierProvider);
     return ResponsiveRow(
       children: [
         TextField(
@@ -97,10 +92,10 @@ class _SearchBar extends StatelessWidget {
             prefixIcon: Icon(Icons.search),
             hintText: 'Search categories...',
           ),
-          onChanged: store.setQuery,
+          onChanged: notifier.setQuery,
         ),
         DropdownButtonFormField<CategorySortBy>(
-          value: context.watch<CategoriesStore>().sortBy,
+          value: state.sortBy,
           items: const [
             DropdownMenuItem(
                 value: CategorySortBy.name, child: Text('Name A-Z')),
@@ -109,7 +104,7 @@ class _SearchBar extends StatelessWidget {
             DropdownMenuItem(
                 value: CategorySortBy.popularity, child: Text('Most Popular')),
           ],
-          onChanged: (v) => store.setSort(v ?? CategorySortBy.name),
+          onChanged: (v) => notifier.setSort(v ?? CategorySortBy.name),
           decoration: const InputDecoration(prefixIcon: Icon(Icons.sort)),
           isExpanded: true,
         ),
@@ -118,13 +113,14 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _FiltersPanel extends StatelessWidget {
+class _FiltersPanel extends ConsumerWidget {
   final bool sticky;
   const _FiltersPanel({this.sticky = false});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<CategoriesStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(categoriesNotifierProvider);
+    final notifier = ref.read(categoriesNotifierProvider.notifier);
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,39 +128,43 @@ class _FiltersPanel extends StatelessWidget {
         Text('Filters', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
 
-        // Industry
+        // Industry (multi-select dropdown)
         Text('Industry', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final industry in kIndustries)
-              FilterChip(
-                label: Text(industry,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                selected: store.selectedIndustries.contains(industry),
-                onSelected: (_) => store.toggleIndustry(industry),
-              ),
-          ],
+        MultiSelectDropdown<String>(
+          options: kIndustries,
+          value: state.selectedIndustries.toList(),
+          onChanged: (list) {
+            for (final i in kIndustries) {
+              final selected = list.contains(i);
+              final has = state.selectedIndustries.contains(i);
+              if (selected && !has) notifier.toggleIndustry(i);
+              if (!selected && has) notifier.toggleIndustry(i);
+            }
+          },
+          itemLabel: (s) => s,
+          hintText: 'Select industries',
+          showChipsInField: false,
         ),
         const SizedBox(height: 16),
 
-        // Materials
+        // Materials (multi-select dropdown)
         Text('Materials Used', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final material in kMaterials)
-              FilterChip(
-                label: Text(material,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                selected: store.selectedMaterials.contains(material),
-                onSelected: (_) => store.toggleMaterial(material),
-              ),
-          ],
+        MultiSelectDropdown<String>(
+          options: kMaterials,
+          value: state.selectedMaterials.toList(),
+          onChanged: (list) {
+            for (final m in kMaterials) {
+              final selected = list.contains(m);
+              final has = state.selectedMaterials.contains(m);
+              if (selected && !has) notifier.toggleMaterial(m);
+              if (!selected && has) notifier.toggleMaterial(m);
+            }
+          },
+          itemLabel: (s) => s,
+          hintText: 'Select materials',
+          showChipsInField: false,
         ),
         const SizedBox(height: 16),
 
@@ -172,7 +172,7 @@ class _FiltersPanel extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: store.clearFilters,
+            onPressed: notifier.clearFilters,
             child: const Text('Clear All Filters'),
           ),
         ),
@@ -183,12 +183,12 @@ class _FiltersPanel extends StatelessWidget {
   }
 }
 
-class _CategoriesGrid extends StatelessWidget {
+class _CategoriesGrid extends ConsumerWidget {
   const _CategoriesGrid();
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<CategoriesStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(categoriesNotifierProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -196,7 +196,7 @@ class _CategoriesGrid extends StatelessWidget {
         gridType: ResponsiveGridType.category,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        children: store.filteredCategories.map((category) {
+        children: state.filteredCategories.map((category) {
           return ResponsiveCategoryCard(
             category: category,
             onTap: () => _navigateToCategory(context, category),

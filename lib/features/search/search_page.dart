@@ -1,25 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/app_state.dart';
-import '../sell/models.dart';
-import '../sell/store/seller_store.dart';
+import '../../state/location/location_state.dart' as loc;
 import 'search_store.dart';
 import '../../widgets/responsive_product_grid.dart';
+import '../../widgets/multi_select_dropdown.dart';
 import '../sell/product_detail_page.dart';
 import '../../app/tokens.dart';
 import '../sell/seller_page.dart';
+import '../../../app/provider_registry.dart';
+import 'comprehensive_search_page.dart';
+import '../sell/models.dart';
 
-class SearchPage extends StatefulWidget {
+final searchStoreProvider =
+    ChangeNotifierProvider.autoDispose<SearchStore>((ref) {
+  final sellerStore = ref.read(sellerStoreProvider);
+  final location = ref.read(locationControllerProvider);
+  final legacy = AppState();
+  legacy.setLocation(
+    city: location.city,
+    area: location.area,
+    state: location.stateName,
+    radiusKm: location.radiusKm,
+    mode: location.mode == loc.LocationMode.auto
+        ? LocationMode.auto
+        : LocationMode.manual,
+    latitude: location.latitude,
+    longitude: location.longitude,
+  );
+  return SearchStore(sellerStore.products, legacy);
+});
+
+class SearchPage extends ConsumerStatefulWidget {
   final String? initialQuery;
   final SearchMode? initialMode;
   const SearchPage({super.key, this.initialQuery, this.initialMode});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  ConsumerState<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
@@ -31,71 +53,86 @@ class _SearchPageState extends State<SearchPage> {
     // Allow navigation from Home with initial query via RouteSettings.arguments
     final argQuery = ModalRoute.of(context)?.settings.arguments as String?;
 
-    return ChangeNotifierProvider(
-      create: (_) {
-        final sellerStore = context.read<SellerStore>();
-        final appState = context.read<AppState>();
-        final store = SearchStore(sellerStore.products, appState);
-        if (widget.initialMode != null) {
-          store.setMode(widget.initialMode!);
-        }
-        final initQ = widget.initialQuery ?? argQuery;
-        if ((initQ ?? '').isNotEmpty) {
-          store.setQuery(initQ!);
-        }
-        return store;
-      },
-      builder: (context, _) {
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          body: SafeArea(
-            child: ContentClamp(
-              child: LayoutBuilder(
-                builder: (context, bc) {
-                  final isDesktop = bc.maxWidth >= AppBreaks.desktop;
-                  return CustomScrollView(
-                    slivers: [
-                      const SliverToBoxAdapter(child: _SearchBar()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                      if (isDesktop)
-                        const SliverToBoxAdapter(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 280,
-                                child: _FiltersPanel(sticky: true),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(child: _ResultsGrid()),
-                            ],
-                          ),
-                        )
-                      else
-                        SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _openFiltersSheet(context),
-                                  icon: const Icon(Icons.tune),
-                                  label: const Text('Filters'),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const _ResultsGrid(),
-                            ],
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
+    // Initialize store once per mount based on incoming params
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      if (widget.initialMode != null) {
+        ref.read(searchStoreProvider).setMode(widget.initialMode!);
+      }
+      final initQ = widget.initialQuery ?? argQuery;
+      if ((initQ ?? '').isNotEmpty) {
+        ref.read(searchStoreProvider).setQuery(initQ!);
+      }
+    });
+
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        title: const Text('Search'),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => ComprehensiveSearchPage(
+                    initialQuery: widget.initialQuery ?? argQuery,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.upgrade),
+            tooltip: 'Enhanced Search',
           ),
-        );
-      },
+        ],
+      ),
+      body: SafeArea(
+        child: ContentClamp(
+          child: LayoutBuilder(
+            builder: (context, bc) {
+              final isDesktop = bc.maxWidth >= AppBreaks.desktop;
+              return CustomScrollView(
+                slivers: [
+                  const SliverToBoxAdapter(child: _SearchBar()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  if (isDesktop)
+                    const SliverToBoxAdapter(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 280,
+                            child: _FiltersPanel(sticky: true),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(child: _ResultsGrid()),
+                        ],
+                      ),
+                    )
+                  else
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _openFiltersSheet(context),
+                              icon: const Icon(Icons.tune),
+                              label: const Text('Filters'),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const _ResultsGrid(),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -112,12 +149,12 @@ class _SearchPageState extends State<SearchPage> {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends ConsumerWidget {
   const _SearchBar();
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<SearchStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(searchStoreProvider);
     return ResponsiveRow(
       children: [
         TextField(
@@ -128,9 +165,9 @@ class _SearchBar extends StatelessWidget {
           onChanged: store.setQuery,
           onSubmitted: store.setQuery,
         ),
-        Selector<SearchStore, SearchMode>(
-          selector: (_, s) => s.mode,
-          builder: (_, mode, __) => SegmentedButton<SearchMode>(
+        Consumer(builder: (context, ref, __) {
+          final mode = ref.watch(searchStoreProvider).mode;
+          return SegmentedButton<SearchMode>(
             segments: const [
               ButtonSegment(
                   value: SearchMode.products, label: Text('Products')),
@@ -140,10 +177,10 @@ class _SearchBar extends StatelessWidget {
             ],
             selected: {mode},
             onSelectionChanged: (s) => store.setMode(s.first),
-          ),
-        ),
+          );
+        }),
         DropdownButtonFormField<SortBy>(
-          value: context.watch<SearchStore>().sortBy,
+          value: ref.watch(searchStoreProvider).sortBy,
           items: const [
             DropdownMenuItem(value: SortBy.relevance, child: Text('Relevance')),
             DropdownMenuItem(
@@ -161,13 +198,13 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _FiltersPanel extends StatelessWidget {
+class _FiltersPanel extends ConsumerWidget {
   final bool sticky;
   const _FiltersPanel({this.sticky = false});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SearchStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(searchStoreProvider);
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,37 +212,42 @@ class _FiltersPanel extends StatelessWidget {
         Text('Filters', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
 
-        // Category
+        // Category (multi-select dropdown)
         Text('Category', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final c in kCategories)
-              FilterChip(
-                label: Text(c, maxLines: 1, overflow: TextOverflow.ellipsis),
-                selected: store.selectedCategories.contains(c),
-                onSelected: (_) => store.toggleCategory(c),
-              ),
-          ],
+        MultiSelectDropdown<String>(
+          options: kCategories,
+          value: store.selectedCategories.toList(),
+          onChanged: (list) {
+            store.selectedCategories
+              ..clear()
+              ..addAll(list);
+            // trigger refresh
+            store.setQuery(store.query);
+          },
+          itemLabel: (s) => s,
+          hintText: 'Select categories',
+          showChipsInField: false,
+          maxSelected: 10,
         ),
         const SizedBox(height: 16),
 
-        // Materials
+        // Materials (multi-select dropdown)
         Text('Materials Used', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final m in kMaterials)
-              FilterChip(
-                label: Text(m, maxLines: 1, overflow: TextOverflow.ellipsis),
-                selected: store.selectedMaterials.contains(m),
-                onSelected: (_) => store.toggleMaterial(m),
-              ),
-          ],
+        MultiSelectDropdown<String>(
+          options: kMaterials,
+          value: store.selectedMaterials.toList(),
+          onChanged: (list) {
+            store.selectedMaterials
+              ..clear()
+              ..addAll(list);
+            store.setQuery(store.query);
+          },
+          itemLabel: (s) => s,
+          hintText: 'Select materials',
+          showChipsInField: false,
+          maxSelected: 10,
         ),
         const SizedBox(height: 16),
 
@@ -249,12 +291,12 @@ class _FiltersPanel extends StatelessWidget {
   }
 }
 
-class _ResultsGrid extends StatelessWidget {
+class _ResultsGrid extends ConsumerWidget {
   const _ResultsGrid();
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SearchStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(searchStoreProvider);
     if (store.mode == SearchMode.profiles) {
       final profiles = store.profilesResults;
       if (profiles.isEmpty) {
@@ -312,21 +354,25 @@ class _ResultsGrid extends StatelessWidget {
           );
         },
         onCallPressed: () {
-          context.read<SellerStore>().recordProductContactCall(product.id);
+          ref.read(sellerStoreProvider).recordProductContactCall(product.id);
         },
         onWhatsAppPressed: () {
-          context.read<SellerStore>().recordProductContactWhatsapp(product.id);
+          ref
+              .read(sellerStoreProvider)
+              .recordProductContactWhatsapp(product.id);
         },
       );
     }).toList();
 
     // Get ads for this search query
-    final sellerStore = context.read<SellerStore>();
-    final searchStore = context.read<SearchStore>();
+    final sellerStore = ref.read(sellerStoreProvider);
+    final searchStore = ref.read(searchStoreProvider);
     final relevantAds = sellerStore.ads.where((ad) {
       if (ad.type == AdType.search) {
-        return ad.term.toLowerCase().contains(searchStore.query.toLowerCase()) ||
-               searchStore.query.toLowerCase().contains(ad.term.toLowerCase());
+        return ad.term
+                .toLowerCase()
+                .contains(searchStore.query.toLowerCase()) ||
+            searchStore.query.toLowerCase().contains(ad.term.toLowerCase());
       }
       return false;
     }).toList();
@@ -339,9 +385,9 @@ class _ResultsGrid extends StatelessWidget {
           Text(
             'Sponsored Results',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
           ),
           const SizedBox(height: 8),
           ...relevantAds.map((ad) => _AdResultCard(ad: ad)),
@@ -349,9 +395,9 @@ class _ResultsGrid extends StatelessWidget {
           Text(
             'Regular Results',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
           ),
           const SizedBox(height: 8),
         ],
@@ -456,7 +502,7 @@ class _B2BProfileCard extends StatelessWidget {
 
 class _AdResultCard extends StatelessWidget {
   final AdCampaign ad;
-  
+
   const _AdResultCard({required this.ad});
 
   @override
@@ -466,7 +512,7 @@ class _AdResultCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -474,8 +520,8 @@ class _AdResultCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              AppColors.primary.withOpacity(0.05),
-              AppColors.primary.withOpacity(0.02),
+              AppColors.primary.withValues(alpha: 0.05),
+              AppColors.primary.withValues(alpha: 0.02),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -518,7 +564,7 @@ class _AdResultCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
               size: 16,
               color: AppColors.textSecondary,

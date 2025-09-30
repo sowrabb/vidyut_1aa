@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'models.dart';
-import '../../services/demo_data_service.dart';
+import '../../services/lightweight_demo_data_service.dart';
 
 class MessagingStore extends ChangeNotifier {
-  final DemoDataService _demoDataService;
+  final LightweightDemoDataService _demoDataService;
   String? _activeConversationId;
   ReplyDraft _replyDraft = const ReplyDraft();
 
@@ -55,7 +55,9 @@ class MessagingStore extends ChangeNotifier {
     for (final conv in _demoDataService.allConversations) {
       if (conv.id != _activeConversationId) {
         // Count unread messages (messages not sent by me)
-        total += conv.messages.where((m) => m.senderType != MessageSenderType.me).length;
+        total += conv.messages
+            .where((m) => m.senderType != MessageSenderType.me)
+            .length;
       }
     }
     return total;
@@ -88,7 +90,7 @@ class MessagingStore extends ChangeNotifier {
     if (_activeConversationId == null || _activeConversationId!.isEmpty) return;
     final conv = _demoDataService.getConversation(_activeConversationId!);
     if (conv == null) return;
-    
+
     final msg = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: conv.id,
@@ -101,12 +103,13 @@ class MessagingStore extends ChangeNotifier {
       isSending: true,
     );
     final updated = conv.copyWith(messages: [...conv.messages, msg]);
-    _demoDataService.updateConversation(updated);
+    _demoDataService.updateConversation(_activeConversationId!, updated);
     _replyDraft = const ReplyDraft();
-    
+
     // Simulate message sending delay and mark as sent
     Future.delayed(const Duration(milliseconds: 500), () {
-      final updatedConv = _demoDataService.getConversation(_activeConversationId!);
+      final updatedConv =
+          _demoDataService.getConversation(_activeConversationId!);
       if (updatedConv != null) {
         final msgIndex = updatedConv.messages.indexWhere((m) => m.id == msg.id);
         if (msgIndex != -1) {
@@ -124,7 +127,8 @@ class MessagingStore extends ChangeNotifier {
           final updatedMessages = List<Message>.from(updatedConv.messages);
           updatedMessages[msgIndex] = sentMsg;
           final finalConv = updatedConv.copyWith(messages: updatedMessages);
-          _demoDataService.updateConversation(finalConv);
+          _demoDataService.updateConversation(
+              _activeConversationId!, finalConv);
         }
       }
     });
@@ -156,6 +160,8 @@ class MessagingStore extends ChangeNotifier {
               sentAt: DateTime.now(),
             ),
         ],
+        participants: ['user1', 'user2'], // Default participants
+        updatedAt: DateTime.now(),
       );
       _demoDataService.addConversation(newConversation);
     }
@@ -163,5 +169,4 @@ class MessagingStore extends ChangeNotifier {
     _replyDraft = const ReplyDraft();
     notifyListeners();
   }
-
 }

@@ -1,21 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/provider_registry.dart';
 import '../../../app/breakpoints.dart';
 import '../../../app/tokens.dart';
-import '../../../widgets/optimized_image_widget.dart';
-import '../../admin/store/admin_store.dart';
+import '../../../widgets/lightweight_image_widget.dart';
 import '../../admin/models/hero_section.dart';
 
-class HeroSlideshow extends StatefulWidget {
+class HeroSlideshow extends ConsumerStatefulWidget {
   const HeroSlideshow({super.key});
 
   @override
-  State<HeroSlideshow> createState() => _HeroSlideshowState();
+  ConsumerState<HeroSlideshow> createState() => _HeroSlideshowState();
 }
 
-class _HeroSlideshowState extends State<HeroSlideshow> {
+class _HeroSlideshowState extends ConsumerState<HeroSlideshow>
+    with WidgetsBindingObserver {
   final _controller = PageController();
   int _index = 0;
   Timer? _timer;
@@ -24,7 +24,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
   static const _defaultSlides = [
     _DefaultSlideData(
       'First time in India, largest Electricity platform',
-      'B2B • D2C • C2C',
+      '',
       imageAssetPath: 'assets/banner/1.JPG',
     ),
     _DefaultSlideData(
@@ -42,6 +42,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startTimer();
   }
 
@@ -49,9 +50,10 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
     _timer?.cancel();
     _timer = Timer.periodic(_getSlideDuration(), (_) {
       if (mounted) {
-        final adminStore = context.read<AdminStore>();
+        final adminStore = ref.read(adminStoreProvider);
         final slides = adminStore.activeHeroSections;
-        final totalSlides = slides.isNotEmpty ? slides.length : _defaultSlides.length;
+        final totalSlides =
+            slides.isNotEmpty ? slides.length : _defaultSlides.length;
         if (totalSlides > 0) {
           _index = (_index + 1) % totalSlides;
           _controller.animateToPage(
@@ -65,20 +67,20 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
   }
 
   Duration _getSlideDuration() {
-    final adminStore = context.read<AdminStore>();
+    final adminStore = ref.read(adminStoreProvider);
     final slides = adminStore.activeHeroSections;
     final currentSlides = slides.isNotEmpty ? slides : _defaultSlides;
-    
+
     if (_index < currentSlides.length) {
       final currentSlide = currentSlides[_index];
       // Use admin store settings for slide durations
       if (currentSlide is HeroSection) {
-        return currentSlide.title.contains('First time in India') 
-            ? Duration(seconds: adminStore.firstSlideDurationSeconds) 
+        return currentSlide.title.contains('First time in India')
+            ? Duration(seconds: adminStore.firstSlideDurationSeconds)
             : Duration(seconds: adminStore.otherSlidesDurationSeconds);
       } else if (currentSlide is _DefaultSlideData) {
-        return currentSlide.title.contains('First time in India') 
-            ? Duration(seconds: adminStore.firstSlideDurationSeconds) 
+        return currentSlide.title.contains('First time in India')
+            ? Duration(seconds: adminStore.firstSlideDurationSeconds)
             : Duration(seconds: adminStore.otherSlidesDurationSeconds);
       }
     }
@@ -89,20 +91,35 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    // Pause when not visible to save resources
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _timer?.cancel();
+    } else if (state == AppLifecycleState.resumed) {
+      _startTimer();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<AdminStore>(
-      builder: (context, adminStore, child) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final adminStore = ref.watch(adminStoreProvider);
         if (!adminStore.isInitialized) {
           // Show default slides while loading
           return _buildDefaultSlideshow(context);
         }
-        
+
         final slides = adminStore.activeHeroSections;
-        
+
         if (slides.isEmpty) {
           // Fallback to default slides if no admin sections are available
           return _buildDefaultSlideshow(context);
@@ -112,10 +129,11 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
         final isDesktop = w >= AppBreakpoints.desktop;
         final double height = isDesktop ? 420 : 320;
 
-        return Container(
+        return SizedBox(
           height: height,
           child: Stack(
             children: [
+              // No background painter - clean white only
               PageView.builder(
                 controller: _controller,
                 itemCount: slides.length,
@@ -128,9 +146,10 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                 },
                 itemBuilder: (_, i) {
                   final hero = slides[i];
-                  final String? effectiveImagePath = (hero.imagePath != null && hero.imagePath!.isNotEmpty)
-                      ? hero.imagePath
-                      : _defaultAssetForIndex(i);
+                  final String? effectiveImagePath =
+                      (hero.imagePath != null && hero.imagePath!.isNotEmpty)
+                          ? hero.imagePath
+                          : _defaultAssetForIndex(i);
                   return Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1200),
@@ -143,6 +162,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                                     child: _SlideContent(
                                       hero: hero,
                                       isDesktop: true,
+                                      showPoweredBy: i == 0,
                                     ),
                                   ),
                                   const SizedBox(width: 16),
@@ -165,6 +185,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                                     child: _SlideContent(
                                       hero: hero,
                                       isDesktop: false,
+                                      showPoweredBy: i == 0,
                                     ),
                                   ),
                                   const SizedBox(height: 16),
@@ -198,9 +219,9 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                         width: _index == index ? 24 : 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _index == index 
-                              ? AppColors.primary 
-                              : AppColors.primary.withOpacity(0.3),
+                          color: _index == index
+                              ? AppColors.primary
+                              : AppColors.primary.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
@@ -221,7 +242,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -229,14 +250,16 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                       ),
                       child: IconButton(
                         onPressed: () {
-                          final newIndex = _index > 0 ? _index - 1 : slides.length - 1;
+                          final newIndex =
+                              _index > 0 ? _index - 1 : slides.length - 1;
                           _controller.animateToPage(
                             newIndex,
                             duration: const Duration(milliseconds: 400),
                             curve: Curves.easeOut,
                           );
                         },
-                        icon: const Icon(Icons.chevron_left, color: Colors.black87),
+                        icon: const Icon(Icons.chevron_left,
+                            color: Colors.black87),
                       ),
                     ),
                   ),
@@ -252,7 +275,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -260,14 +283,16 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                       ),
                       child: IconButton(
                         onPressed: () {
-                          final newIndex = _index < slides.length - 1 ? _index + 1 : 0;
+                          final newIndex =
+                              _index < slides.length - 1 ? _index + 1 : 0;
                           _controller.animateToPage(
                             newIndex,
                             duration: const Duration(milliseconds: 400),
                             curve: Curves.easeOut,
                           );
                         },
-                        icon: const Icon(Icons.chevron_right, color: Colors.black87),
+                        icon: const Icon(Icons.chevron_right,
+                            color: Colors.black87),
                       ),
                     ),
                   ),
@@ -285,10 +310,14 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
     final isDesktop = w >= AppBreakpoints.desktop;
     final double height = isDesktop ? 420 : 400; // Increased mobile height
 
-    return Container(
+    return SizedBox(
       height: height,
       child: Stack(
         children: [
+          // Completely clean white background - no painters or decorations
+          const Positioned.fill(child: ColoredBox(color: Colors.white)),
+          // Completely clean white background - no painters or decorations
+          const Positioned.fill(child: ColoredBox(color: Colors.white)),
           PageView.builder(
             controller: _controller,
             itemCount: _defaultSlides.length,
@@ -314,13 +343,15 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                                   title: slide.title,
                                   subtitle: slide.subtitle,
                                   isDesktop: true,
+                                  showPoweredBy: i == 0,
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: AspectRatio(
                                   aspectRatio: 4 / 3,
-                                  child: _buildDefaultImage(slide.imageAssetPath, true),
+                                  child: _buildDefaultImage(
+                                      slide.imageAssetPath, true),
                                 ),
                               ),
                             ],
@@ -329,19 +360,21 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               // Give more space to text content
-                              SizedBox(
-                                height: height * 0.7, // 70% of height for text
+                              Expanded(
+                                flex: 7, // 70% of height for text
                                 child: _DefaultSlideContent(
                                   title: slide.title,
                                   subtitle: slide.subtitle,
                                   isDesktop: false,
+                                  showPoweredBy: i == 0,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               // Less space for image
-                              SizedBox(
-                                height: height * 0.3, // 30% of height for image
-                                child: _buildDefaultImage(slide.imageAssetPath, false),
+                              Expanded(
+                                flex: 3, // 30% of height for image
+                                child: _buildDefaultImage(
+                                    slide.imageAssetPath, false),
                               ),
                             ],
                           ),
@@ -364,9 +397,9 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                     width: _index == index ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _index == index 
-                          ? AppColors.primary 
-                          : AppColors.primary.withOpacity(0.3),
+                      color: _index == index
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -387,7 +420,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -395,7 +428,8 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                   ),
                   child: IconButton(
                     onPressed: () {
-                      final newIndex = _index > 0 ? _index - 1 : _defaultSlides.length - 1;
+                      final newIndex =
+                          _index > 0 ? _index - 1 : _defaultSlides.length - 1;
                       _controller.animateToPage(
                         newIndex,
                         duration: const Duration(milliseconds: 400),
@@ -418,7 +452,7 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -426,14 +460,16 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
                   ),
                   child: IconButton(
                     onPressed: () {
-                      final newIndex = _index < _defaultSlides.length - 1 ? _index + 1 : 0;
+                      final newIndex =
+                          _index < _defaultSlides.length - 1 ? _index + 1 : 0;
                       _controller.animateToPage(
                         newIndex,
                         duration: const Duration(milliseconds: 400),
                         curve: Curves.easeOut,
                       );
                     },
-                    icon: const Icon(Icons.chevron_right, color: Colors.black87),
+                    icon:
+                        const Icon(Icons.chevron_right, color: Colors.black87),
                   ),
                 ),
               ),
@@ -474,7 +510,10 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => _buildPlaceholderImage(isDesktop),
+        cacheWidth: isDesktop ? 800 : 400,
+        cacheHeight: isDesktop ? 600 : 300,
+        errorBuilder: (context, error, stack) =>
+            _buildPlaceholderImage(isDesktop),
       ),
     );
   }
@@ -483,10 +522,12 @@ class _HeroSlideshowState extends State<HeroSlideshow> {
 class _SlideContent extends StatelessWidget {
   final HeroSection hero;
   final bool isDesktop;
+  final bool showPoweredBy;
 
   const _SlideContent({
     required this.hero,
     required this.isDesktop,
+    this.showPoweredBy = false,
   });
 
   @override
@@ -497,18 +538,24 @@ class _SlideContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Flexible(
-          child: Text(
-            hero.title,
-            textAlign: TextAlign.center,
-            maxLines: isDesktop ? 2 : 3, // Reduced for better mobile fit
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: isDesktop
-                      ? null
-                      : Theme.of(context).textTheme.headlineLarge!.fontSize! *
-                          0.75, // Reduced mobile font size for better fit
+          child: hero.title.contains('First time in India')
+              ? _AnimatedGradientText(
+                  hero.title,
+                  isDesktop: isDesktop,
+                  maxLines: isDesktop ? 2 : 3,
+                )
+              : Text(
+                  hero.title,
+                  textAlign: TextAlign.center,
+                  maxLines: isDesktop ? 2 : 3, // Reduced for better mobile fit
+                  overflow: TextOverflow.ellipsis,
+                  style: _heroTitleStyle(context, isDesktop, false).copyWith(
+                    fontSize: isDesktop
+                        ? null
+                        : Theme.of(context).textTheme.headlineLarge!.fontSize! *
+                            0.75, // Reduced mobile font size for better fit
+                  ),
                 ),
-          ),
         ),
         const SizedBox(height: 8),
         Flexible(
@@ -525,71 +572,54 @@ class _SlideContent extends StatelessWidget {
                 ),
           ),
         ),
+        if (showPoweredBy) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'Powered by Madhu Powertech PVT LTD',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: isDesktop
+                            ? null
+                            : (Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.fontSize ??
+                                    14) *
+                                0.95,
+                      ) ??
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+        // No segmented bar or category chips per the new clean design
         // Show CTA button only if it's not the first slide
-        if (hero.ctaText != null && hero.ctaText!.isNotEmpty && !hero.title.contains('First time in India')) ...[
+        if (hero.ctaText != null &&
+            hero.ctaText!.isNotEmpty &&
+            !hero.title.contains('First time in India')) ...[
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () {
               // Handle CTA click - you can add navigation logic here
               if (hero.ctaUrl != null && hero.ctaUrl!.isNotEmpty) {
                 // Navigate to the URL or handle the action
-                print('CTA clicked: ${hero.ctaText} -> ${hero.ctaUrl}');
+                debugPrint('CTA clicked: ${hero.ctaText} -> ${hero.ctaUrl}');
               }
             },
             child: Text(hero.ctaText!),
           ),
         ],
-        // Show company highlight only for the first slide (First time in India)
-        if (hero.title.contains('First time in India')) ...[
-          SizedBox(height: isDesktop ? 20 : 6), // Much smaller spacing for mobile
-          // Eye-catching company highlight with enhanced UI
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 20 : 8, // Much smaller padding for mobile
-              vertical: isDesktop ? 12 : 6, // Much smaller padding for mobile
-            ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withOpacity(0.9),
-                  AppColors.primary.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                stops: const [0.0, 0.5, 1.0],
-              ),
-              borderRadius: BorderRadius.circular(isDesktop ? 25 : 20), // Smaller radius for mobile
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.4),
-                  blurRadius: isDesktop ? 12 : 8, // Reduced shadow for mobile
-                  offset: const Offset(0, 6),
-                  spreadRadius: isDesktop ? 2 : 1, // Reduced spread for mobile
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: isDesktop ? 8 : 4, // Reduced shadow for mobile
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              'Produced by Madhu Powertech Pvt. Ltd.',
-              style: GoogleFonts.manrope(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: isDesktop ? 16 : 9, // Even smaller mobile font size
-                letterSpacing: 0.2, // Reduced letter spacing for mobile
-                height: 1.0, // Tighter line height
-              ),
-            ),
-          ),
-        ],
+        // Company highlight removed for a clean, minimal hero
       ],
     );
   }
@@ -614,9 +644,7 @@ class _HeroImage extends StatelessWidget {
           color: AppColors.outlineSoft,
         ),
       ),
-      child: imagePath != null
-          ? _buildImage()
-          : _buildPlaceholder(),
+      child: imagePath != null ? _buildImage() : _buildPlaceholder(),
     );
   }
 
@@ -640,7 +668,6 @@ class _HeroImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     );
   }
-
 
   Widget _buildPlaceholder() {
     return Center(
@@ -676,11 +703,13 @@ class _DefaultSlideContent extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool isDesktop;
+  final bool showPoweredBy;
 
   const _DefaultSlideContent({
     required this.title,
     required this.subtitle,
     required this.isDesktop,
+    this.showPoweredBy = false,
   });
 
   @override
@@ -690,20 +719,28 @@ class _DefaultSlideContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          maxLines: isDesktop ? 2 : 6, // Increased mobile lines even more
-          overflow: TextOverflow.visible, // Changed to visible to prevent chopping
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontSize: isDesktop
-                    ? null
-                    : Theme.of(context).textTheme.headlineLarge!.fontSize! *
-                        0.5, // Much smaller mobile font size
-                height: 0.9, // Even tighter line height
-                fontWeight: FontWeight.w600, // Slightly bolder for readability
+        title.contains('First time in India')
+            ? _AnimatedGradientText(
+                title,
+                isDesktop: isDesktop,
+                maxLines: isDesktop ? 2 : 6,
+              )
+            : Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: isDesktop ? 2 : 6, // Increased mobile lines even more
+                overflow: TextOverflow
+                    .visible, // Changed to visible to prevent chopping
+                style: _heroTitleStyle(context, isDesktop, false).copyWith(
+                  fontSize: isDesktop
+                      ? null
+                      : Theme.of(context).textTheme.headlineLarge!.fontSize! *
+                          0.5, // Much smaller mobile font size
+                  height: 0.9, // Even tighter line height
+                  fontWeight:
+                      FontWeight.w600, // Slightly bolder for readability
+                ),
               ),
-        ),
         SizedBox(height: isDesktop ? 8 : 4), // Smaller spacing for mobile
         Text(
           subtitle,
@@ -719,58 +756,132 @@ class _DefaultSlideContent extends StatelessWidget {
                 fontWeight: FontWeight.w500, // Slightly bolder
               ),
         ),
-        // Show company highlight only for the first slide (First time in India)
-        if (title.contains('First time in India')) ...[
-          SizedBox(height: isDesktop ? 20 : 6), // Much smaller spacing for mobile
-          // Eye-catching company highlight with enhanced UI
+        if (showPoweredBy) ...[
+          const SizedBox(height: 10),
           Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 20 : 8, // Much smaller padding for mobile
-              vertical: isDesktop ? 12 : 6, // Much smaller padding for mobile
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withOpacity(0.9),
-                  AppColors.primary.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                stops: const [0.0, 0.5, 1.0],
-              ),
-              borderRadius: BorderRadius.circular(isDesktop ? 25 : 20), // Smaller radius for mobile
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.4),
-                  blurRadius: isDesktop ? 12 : 8, // Reduced shadow for mobile
-                  offset: const Offset(0, 6),
-                  spreadRadius: isDesktop ? 2 : 1, // Reduced spread for mobile
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: isDesktop ? 8 : 4, // Reduced shadow for mobile
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              'Produced by Madhu Powertech Pvt. Ltd.',
-              style: GoogleFonts.manrope(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: isDesktop ? 16 : 9, // Even smaller mobile font size
-                letterSpacing: 0.2, // Reduced letter spacing for mobile
-                height: 1.0, // Tighter line height
-              ),
+              'Powered by Madhu Powertech PVT LTD',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: isDesktop
+                            ? null
+                            : (Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.fontSize ??
+                                    14) *
+                                0.9,
+                      ) ??
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
+        // No segmented bar or category chips per the new clean design
+        // Company highlight removed for a clean, minimal hero
       ],
     );
   }
 }
+
+// Prism City background
+// Removed _LightPrismBackground and _LightPrismPainter classes - no more grid or lines
+
+TextStyle _heroTitleStyle(
+    BuildContext context, bool isDesktop, bool useGradient) {
+  final base = Theme.of(context).textTheme.headlineLarge ??
+      const TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+  // Always return base; gradient is applied by _AnimatedGradientText when needed
+  return base;
+}
+
+class _AnimatedGradientText extends StatefulWidget {
+  final String text;
+  final bool isDesktop;
+  final int maxLines;
+  const _AnimatedGradientText(this.text,
+      {required this.isDesktop, this.maxLines = 2});
+
+  @override
+  State<_AnimatedGradientText> createState() => _AnimatedGradientTextState();
+}
+
+class _AnimatedGradientTextState extends State<_AnimatedGradientText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  static const List<Color> _colors = [
+    Color(0xFFD32F2F), // dark red
+    Color(0xFFF57C00), // dark orange
+    Color(0xFFF9A825), // golden yellow (darker)
+    Color(0xFF388E3C), // dark green
+    Color(0xFF1976D2), // dark blue
+    Color(0xFF7B1FA2), // dark violet
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 8))
+          ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.headlineLarge?.copyWith(
+              fontSize: widget.isDesktop
+                  ? null
+                  : Theme.of(context).textTheme.headlineLarge!.fontSize! * 0.75,
+              height: 0.95,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ) ??
+        const TextStyle(
+            fontSize: 28, fontWeight: FontWeight.w700, color: Colors.black);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        // Slide gradient horizontally over time
+        final t = _controller.value; // 0..1
+        final beginX = -1.0 + 2.0 * t; // moves from -1 to 1
+        final endX = beginX + 1.5; // wider sweep
+        return ShaderMask(
+          shaderCallback: (Rect bounds) {
+            return LinearGradient(
+              colors: _colors,
+              begin: Alignment(beginX, 0),
+              end: Alignment(endX, 0),
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.srcIn,
+          child: Text(
+            widget.text,
+            textAlign: TextAlign.center,
+            maxLines: widget.maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: baseStyle,
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Removed segmented bar and category tiles per clean design

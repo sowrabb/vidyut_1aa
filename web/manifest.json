@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Vidyut helps discover, list, and manage electrical products with fast search, rich images, and supplier discovery.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

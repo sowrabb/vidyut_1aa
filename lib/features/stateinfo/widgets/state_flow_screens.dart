@@ -1,47 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/layout/adaptive.dart';
 import '../../../app/tokens.dart';
-import '../store/state_info_store.dart';
+import '../../../app/provider_registry.dart';
 import '../models/state_info_models.dart';
 import '../pages/comprehensive_state_info_page.dart';
 import 'profile_widgets.dart';
+import 'product_design_widgets.dart';
+import 'shared_media_components.dart';
 
 // States Selection Screen
-class StatesSelectionScreen extends StatelessWidget {
+class StatesSelectionScreen extends ConsumerWidget {
   const StatesSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<StateInfoStore>();
-    
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(localStateInfoStoreProvider);
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child:           StateProgressIndicator(
+          child: StateProgressIndicator(
             total: 3,
             current: store.stateFlowProgress,
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: context.isDesktop ? 3 : (context.isTablet ? 2 : 1),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.2,
-            ),
-            itemCount: store.indianStates.length,
-            itemBuilder: (context, index) {
-              final state = store.indianStates[index];
-              return _StateCard(
-                state: state,
-                onTap: () => store.selectState(state.id),
-              );
-            },
-          ),
+          child: store.indianStates.isEmpty
+              ? _buildEmptyState(context, 'No states available')
+              : GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:
+                        context.isDesktop ? 3 : (context.isTablet ? 2 : 1),
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.2,
+                  ),
+                  itemCount: store.indianStates.length,
+                  itemBuilder: (context, index) {
+                    final state = store.indianStates[index];
+                    return _StateCard(
+                      state: state,
+                      onTap: () => store.selectState(state.id),
+                    );
+                  },
+                ),
         ),
         NavigationButtons(
           onBack: () => store.backToStateFlow(),
@@ -53,21 +58,21 @@ class StatesSelectionScreen extends StatelessWidget {
 }
 
 // State Detail Screen
-class StateDetailScreen extends StatefulWidget {
+class StateDetailScreen extends ConsumerStatefulWidget {
   const StateDetailScreen({super.key});
 
   @override
-  State<StateDetailScreen> createState() => _StateDetailScreenState();
+  ConsumerState<StateDetailScreen> createState() => _StateDetailScreenState();
 }
 
-class _StateDetailScreenState extends State<StateDetailScreen>
+class _StateDetailScreenState extends ConsumerState<StateDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -78,18 +83,18 @@ class _StateDetailScreenState extends State<StateDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<StateInfoStore>();
+    final store = ref.watch(stateInfoStoreProvider);
     final state = store.selectedStateData;
-    
+
     if (state == null) {
       return const Center(child: Text('State not found'));
     }
-    
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child:           StateProgressIndicator(
+          child: StateProgressIndicator(
             total: 3,
             current: store.stateFlowProgress,
           ),
@@ -115,6 +120,8 @@ class _StateDetailScreenState extends State<StateDetailScreen>
             Tab(text: 'Administration'),
             Tab(text: 'Energy Mix'),
             Tab(text: 'Districts/Mandals'),
+            Tab(text: 'Updates'),
+            Tab(text: 'Product Design'),
           ],
         ),
         // Tab Content
@@ -126,6 +133,17 @@ class _StateDetailScreenState extends State<StateDetailScreen>
               _StateAdministrationTab(state: state),
               _StateEnergyMixTab(state: state),
               _StateDistrictsTab(state: state),
+              _StateUpdatesTab(
+                posts: state.posts,
+                sectorType: 'state',
+                sectorId: state.id,
+              ),
+              ProductDesignTab(
+                productDesigns: state.productDesigns,
+                sectorType: 'state',
+                sectorId: state.id,
+                isEditMode: false, // TODO: Pass from parent
+              ),
             ],
           ),
         ),
@@ -139,14 +157,14 @@ class _StateDetailScreenState extends State<StateDetailScreen>
 }
 
 // Mandal Detail Screen
-class MandalDetailScreen extends StatefulWidget {
+class MandalDetailScreen extends ConsumerStatefulWidget {
   const MandalDetailScreen({super.key});
 
   @override
-  State<MandalDetailScreen> createState() => _MandalDetailScreenState();
+  ConsumerState<MandalDetailScreen> createState() => _MandalDetailScreenState();
 }
 
-class _MandalDetailScreenState extends State<MandalDetailScreen>
+class _MandalDetailScreenState extends ConsumerState<MandalDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -164,19 +182,19 @@ class _MandalDetailScreenState extends State<MandalDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<StateInfoStore>();
+    final store = ref.watch(stateInfoStoreProvider);
     final mandal = store.selectedMandalData;
     final state = store.selectedStateData;
-    
+
     if (mandal == null || state == null) {
       return const Center(child: Text('Mandal or State not found'));
     }
-    
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child:           StateProgressIndicator(
+          child: StateProgressIndicator(
             total: 3,
             current: store.stateFlowProgress,
           ),
@@ -249,7 +267,7 @@ class _StateCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -265,17 +283,19 @@ class _StateCard extends StatelessWidget {
                       children: [
                         Text(
                           state.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Capital: ${state.capital}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                         ),
                       ],
                     ),
@@ -284,32 +304,36 @@ class _StateCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   state.powerCapacity,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.w600,
-                  ),
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.business,
                     size: 16,
                     color: AppColors.textSecondary,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    '${state.discoms} DISCOMs',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                  Expanded(
+                    child: Text(
+                      '${state.discoms} DISCOMs',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -318,13 +342,17 @@ class _StateCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '${state.mandals.length} Districts',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                  Expanded(
+                    child: Text(
+                      '${state.mandals.length} Districts',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Icon(
+                  const SizedBox(width: 8),
+                  const Icon(
                     Icons.arrow_forward_ios,
                     size: 16,
                     color: AppColors.textSecondary,
@@ -365,45 +393,49 @@ class _StateHeader extends StatelessWidget {
                   Text(
                     state.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   Text(
                     'Capital: ${state.capital}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                          color: AppColors.textSecondary,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           state.powerCapacity,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${state.discoms} DISCOMs',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ),
                     ],
@@ -435,7 +467,7 @@ class _MandalHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -452,45 +484,49 @@ class _MandalHeader extends StatelessWidget {
                   Text(
                     mandal.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   Text(
                     stateName,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                          color: AppColors.textSecondary,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
+                          color: Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           mandal.population,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.1),
+                          color: Colors.purple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           mandal.powerDemand,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.purple,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ),
                     ],
@@ -525,8 +561,8 @@ class _StateOverviewTab extends StatelessWidget {
                 Text(
                   'Quick Information',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 _InfoRow('Capital', state.capital),
@@ -564,8 +600,8 @@ class _StateAdministrationTab extends StatelessWidget {
                 Text(
                   'Chief Minister',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -586,9 +622,12 @@ class _StateAdministrationTab extends StatelessWidget {
                           ),
                           Text(
                             'Chief Minister',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
                           ),
                         ],
                       ),
@@ -609,8 +648,8 @@ class _StateAdministrationTab extends StatelessWidget {
                 Text(
                   'Energy Minister',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -631,9 +670,12 @@ class _StateAdministrationTab extends StatelessWidget {
                           ),
                           Text(
                             'Energy Minister',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
                           ),
                         ],
                       ),
@@ -654,8 +696,8 @@ class _StateAdministrationTab extends StatelessWidget {
                 Text(
                   'Contact Information',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 _InfoRow('Address', state.address),
@@ -690,14 +732,17 @@ class _StateEnergyMixTab extends StatelessWidget {
                 Text(
                   'Energy Mix Breakdown',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 16),
-                _EnergyMixBar('Thermal', state.energyMix.thermal, Colors.orange),
+                _EnergyMixBar(
+                    'Thermal', state.energyMix.thermal, Colors.orange),
                 _EnergyMixBar('Hydro', state.energyMix.hydro, Colors.blue),
-                _EnergyMixBar('Nuclear', state.energyMix.nuclear, Colors.purple),
-                _EnergyMixBar('Renewable', state.energyMix.renewable, Colors.green),
+                _EnergyMixBar(
+                    'Nuclear', state.energyMix.nuclear, Colors.purple),
+                _EnergyMixBar(
+                    'Renewable', state.energyMix.renewable, Colors.green),
               ],
             ),
           ),
@@ -712,26 +757,26 @@ class _StateEnergyMixTab extends StatelessWidget {
                 Text(
                   'DISCOMs in ${state.name}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 ...state.discomsList.map((discom) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.business, size: 20),
-                      const SizedBox(width: 8),
-                      Text(discom),
-                    ],
-                  ),
-                )),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.business, size: 20),
+                          const SizedBox(width: 8),
+                          Text(discom),
+                        ],
+                      ),
+                    )),
               ],
             ),
           ),
@@ -741,32 +786,35 @@ class _StateEnergyMixTab extends StatelessWidget {
   }
 }
 
-class _StateDistrictsTab extends StatelessWidget {
+class _StateDistrictsTab extends ConsumerWidget {
   final IndianState state;
 
   const _StateDistrictsTab({required this.state});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<StateInfoStore>();
-    
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: context.isDesktop ? 3 : (context.isTablet ? 2 : 1),
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.2,
-      ),
-      itemCount: state.mandals.length,
-      itemBuilder: (context, index) {
-        final mandal = state.mandals[index];
-        return _MandalCard(
-          mandal: mandal,
-          onTap: () => store.selectMandal(mandal.id),
-        );
-      },
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(localStateInfoStoreProvider);
+
+    return state.mandals.isEmpty
+        ? _buildEmptyState(context, 'No districts/mandals available')
+        : GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount:
+                  context.isDesktop ? 3 : (context.isTablet ? 2 : 1),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: state.mandals.length,
+            itemBuilder: (context, index) {
+              final mandal = state.mandals[index];
+              return _MandalCard(
+                mandal: mandal,
+                onTap: () => store.selectMandal(mandal.id),
+              );
+            },
+          );
   }
 }
 
@@ -789,14 +837,16 @@ class _MandalOverviewTab extends StatelessWidget {
                 Text(
                   'Demographics & Power',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 _InfoRow('Population', mandal.population),
                 _InfoRow('Power Demand', mandal.powerDemand),
-                if (mandal.website != null) _InfoRow('Website', mandal.website!),
-                if (mandal.helpline != null) _InfoRow('Helpline', mandal.helpline!),
+                if (mandal.website != null)
+                  _InfoRow('Website', mandal.website!),
+                if (mandal.helpline != null)
+                  _InfoRow('Helpline', mandal.helpline!),
               ],
             ),
           ),
@@ -804,6 +854,245 @@ class _MandalOverviewTab extends StatelessWidget {
         const SizedBox(height: 16),
         if (mandal.posts != null) PostsList(posts: mandal.posts!),
       ],
+    );
+  }
+}
+
+class _StateUpdatesTab extends StatefulWidget {
+  final List<Post> posts;
+  final String sectorType;
+  final String sectorId;
+
+  const _StateUpdatesTab({
+    required this.posts,
+    required this.sectorType,
+    required this.sectorId,
+  });
+
+  @override
+  State<_StateUpdatesTab> createState() => _StateUpdatesTabState();
+}
+
+class _StateUpdatesTabState extends State<_StateUpdatesTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedAuthor = 'All';
+  List<String> _availableAuthors = ['All'];
+
+  @override
+  void initState() {
+    super.initState();
+    _updateAuthors();
+  }
+
+  void _updateAuthors() {
+    final authors = widget.posts.map((post) => post.author).toSet().toList();
+    authors.sort();
+    _availableAuthors = ['All', ...authors];
+  }
+
+  List<Post> get _filteredPosts {
+    return widget.posts.where((post) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          post.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          post.content.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesAuthor =
+          _selectedAuthor == 'All' || post.author == _selectedAuthor;
+      return matchesSearch && matchesAuthor;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Search and filter section
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search posts...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                DropdownButton<String>(
+                  value: _selectedAuthor,
+                  items: _availableAuthors.map((author) {
+                    return DropdownMenuItem(
+                      value: author,
+                      child: Text(author),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedAuthor = value ?? 'All';
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Posts list
+            if (_filteredPosts.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.article_outlined,
+                        size: 64,
+                        color: AppColors.textSecondary,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No posts found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Create your first post to get started',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._filteredPosts.map((post) => _SimplePostCard(post: post)),
+          ],
+        ),
+        // Floating action button for creating new post
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton(
+            onPressed: () {
+              StateInfoPostEditor.show(
+                context: context,
+                entityId: widget.sectorId,
+                entityType: widget.sectorType,
+                author: 'Current User', // TODO: Get from auth context
+                onSave: (post) {
+                  // Persist new post via parent/store as needed
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('New post created: ${post.title}')),
+                  );
+                },
+              );
+            },
+            tooltip: 'Create new post',
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SimplePostCard extends StatelessWidget {
+  final Post post;
+
+  const _SimplePostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    post.author.isNotEmpty ? post.author[0].toUpperCase() : 'A',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.author,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      Text(
+                        post.time,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              post.title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              post.content,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            if (post.tags.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: post.tags
+                    .map((tag) => Chip(
+                          label: Text(
+                            tag,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: AppColors.surface,
+                          side: BorderSide(color: AppColors.border),
+                        ))
+                    .toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -828,20 +1117,20 @@ class _MandalAdministrationTab extends StatelessWidget {
                   Text(
                     'Division Controller',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       CircleAvatar(
                         radius: 30,
-                        backgroundImage: mandal.controllerPhoto != null 
+                        backgroundImage: mandal.controllerPhoto != null
                             ? AssetImage(mandal.controllerPhoto!)
                             : null,
                         backgroundColor: AppColors.surface,
-                        child: mandal.controllerPhoto == null 
-                            ? const Icon(Icons.person) 
+                        child: mandal.controllerPhoto == null
+                            ? const Icon(Icons.person)
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -855,9 +1144,12 @@ class _MandalAdministrationTab extends StatelessWidget {
                             ),
                             Text(
                               'Division Controller',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                             ),
                           ],
                         ),
@@ -879,18 +1171,16 @@ class _MandalAdministrationTab extends StatelessWidget {
                 Text(
                   'Contact Information',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
-                if (mandal.administrator != null) 
+                if (mandal.administrator != null)
                   _InfoRow('Administrator', mandal.administrator!),
-                if (mandal.officeAddress != null) 
+                if (mandal.officeAddress != null)
                   _InfoRow('Office Address', mandal.officeAddress!),
-                if (mandal.phone != null) 
-                  _InfoRow('Phone', mandal.phone!),
-                if (mandal.email != null) 
-                  _InfoRow('Email', mandal.email!),
+                if (mandal.phone != null) _InfoRow('Phone', mandal.phone!),
+                if (mandal.email != null) _InfoRow('Email', mandal.email!),
               ],
             ),
           ),
@@ -919,29 +1209,29 @@ class _MandalDiscomsTab extends StatelessWidget {
                 Text(
                   'Local Distribution Companies',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 if (mandal.discoms != null && mandal.discoms!.isNotEmpty) ...[
                   ...mandal.discoms!.map((discom) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.business, size: 20),
-                        const SizedBox(width: 8),
-                        Text(discom),
-                        const Spacer(),
-                        const Icon(Icons.arrow_forward_ios, size: 16),
-                      ],
-                    ),
-                  )),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.business, size: 20),
+                            const SizedBox(width: 8),
+                            Text(discom),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios, size: 16),
+                          ],
+                        ),
+                      )),
                 ] else ...[
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -988,7 +1278,7 @@ class _MandalCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -1002,8 +1292,8 @@ class _MandalCard extends StatelessWidget {
                     child: Text(
                       mandal.name,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1012,23 +1302,24 @@ class _MandalCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   mandal.population,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.w600,
-                  ),
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.flash_on,
                     size: 16,
                     color: AppColors.textSecondary,
@@ -1038,8 +1329,8 @@ class _MandalCard extends StatelessWidget {
                     child: Text(
                       mandal.powerDemand,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                            color: AppColors.textSecondary,
+                          ),
                     ),
                   ),
                 ],
@@ -1049,13 +1340,17 @@ class _MandalCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (mandal.discoms != null)
-                    Text(
-                      '${mandal.discoms!.length} DISCOMs',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+                    Expanded(
+                      child: Text(
+                        '${mandal.discoms!.length} DISCOMs',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  Icon(
+                  const SizedBox(width: 8),
+                  const Icon(
                     Icons.arrow_forward_ios,
                     size: 16,
                     color: AppColors.textSecondary,
@@ -1088,9 +1383,9 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
           const SizedBox(width: 8),
@@ -1126,15 +1421,15 @@ class _EnergyMixBar extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                      fontWeight: FontWeight.w500,
+                    ),
               ),
               Text(
                 '$percentage%',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
               ),
             ],
           ),
@@ -1160,4 +1455,41 @@ class _EnergyMixBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// Helper method for empty states
+Widget _buildEmptyState(BuildContext context, String message) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.info_outline,
+            size: 64,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 18,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Please check back later or contact support',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    ),
+  );
 }

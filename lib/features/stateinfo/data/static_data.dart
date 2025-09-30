@@ -9,7 +9,8 @@ class StateInfoStaticData {
     Post(
       id: '1',
       title: 'New Power Plant Commissioned',
-      content: 'Successfully commissioned a new 500MW thermal power plant to meet growing energy demands.',
+      content:
+          'Successfully commissioned a new 500MW thermal power plant to meet growing energy demands.',
       author: 'Admin',
       time: '2 hours ago',
       tags: ['Power Generation', 'Infrastructure'],
@@ -17,7 +18,8 @@ class StateInfoStaticData {
     Post(
       id: '2',
       title: 'Renewable Energy Initiative',
-      content: 'Launching new solar and wind energy projects across multiple states.',
+      content:
+          'Launching new solar and wind energy projects across multiple states.',
       author: 'Energy Minister',
       time: '1 day ago',
       tags: ['Renewable', 'Solar', 'Wind'],
@@ -25,7 +27,8 @@ class StateInfoStaticData {
     Post(
       id: '3',
       title: 'Grid Maintenance Schedule',
-      content: 'Scheduled maintenance for transmission lines will occur this weekend.',
+      content:
+          'Scheduled maintenance for transmission lines will occur this weekend.',
       author: 'Operations',
       time: '3 days ago',
       tags: ['Maintenance', 'Transmission'],
@@ -49,7 +52,8 @@ class StateInfoStaticData {
       phone: '+91-11-2345-6789',
       email: 'info@ntpc.co.in',
       website: 'www.ntpc.co.in',
-      description: 'India\'s largest thermal power generating company, contributing significantly to the nation\'s energy security through sustainable power generation.',
+      description:
+          'India\'s largest thermal power generating company, contributing significantly to the nation\'s energy security through sustainable power generation.',
       totalPlants: 24,
       employees: '18,000+',
       revenue: '₹1,15,000 Crore',
@@ -70,7 +74,8 @@ class StateInfoStaticData {
       phone: '+91-129-2277-001',
       email: 'info@nhpcindia.com',
       website: 'www.nhpcindia.com',
-      description: 'Premier hydroelectric power generation company in India, harnessing water resources for clean energy production.',
+      description:
+          'Premier hydroelectric power generation company in India, harnessing water resources for clean energy production.',
       totalPlants: 15,
       employees: '8,500+',
       revenue: '₹12,500 Crore',
@@ -91,7 +96,8 @@ class StateInfoStaticData {
       phone: '+91-22-2559-9999',
       email: 'info@npcil.co.in',
       website: 'www.npcil.nic.in',
-      description: 'India\'s nuclear power generation company, operating nuclear reactors for clean and reliable baseload power.',
+      description:
+          'India\'s nuclear power generation company, operating nuclear reactors for clean and reliable baseload power.',
       totalPlants: 7,
       employees: '15,000+',
       revenue: '₹18,500 Crore',
@@ -112,7 +118,8 @@ class StateInfoStaticData {
       phone: '+91-79-2656-2555',
       email: 'info@adanipower.com',
       website: 'www.adanipower.com',
-      description: 'One of India\'s largest private thermal power producers, focused on efficient and environmentally responsible power generation.',
+      description:
+          'One of India\'s largest private thermal power producers, focused on efficient and environmentally responsible power generation.',
       totalPlants: 5,
       employees: '5,000+',
       revenue: '₹35,500 Crore',
@@ -133,7 +140,8 @@ class StateInfoStaticData {
       phone: '+91-22-6665-8282',
       email: 'info@tatapower.com',
       website: 'www.tatapower.com',
-      description: 'India\'s oldest private sector power utility, pioneering sustainable energy solutions and renewable technologies.',
+      description:
+          'India\'s oldest private sector power utility, pioneering sustainable energy solutions and renewable technologies.',
       totalPlants: 18,
       employees: '12,000+',
       revenue: '₹42,000 Crore',
@@ -158,7 +166,8 @@ class StateInfoStaticData {
       phone: '+91-124-642-5000',
       email: 'info@powergridindia.com',
       website: 'www.powergridindia.com',
-      description: 'India\'s largest electric power transmission utility, operating the national grid infrastructure.',
+      description:
+          'India\'s largest electric power transmission utility, operating the national grid infrastructure.',
       totalSubstations: 172,
       employees: '12,500+',
       revenue: '₹42,000 Crore',
@@ -179,7 +188,8 @@ class StateInfoStaticData {
       phone: '+91-XXX-XXX-XXXX',
       email: 'info@stu.gov.in',
       website: 'www.stu.gov.in',
-      description: 'State-level transmission utility managing regional power transmission infrastructure.',
+      description:
+          'State-level transmission utility managing regional power transmission infrastructure.',
       totalSubstations: 85,
       employees: '5,500+',
       revenue: '₹8,500 Crore',
@@ -200,7 +210,8 @@ class StateInfoStaticData {
       phone: '+91-XXX-XXX-XXXX',
       email: 'info@regionalgrid.co.in',
       website: 'www.regionalgrid.co.in',
-      description: 'Regional transmission utility serving multiple districts with reliable power transmission.',
+      description:
+          'Regional transmission utility serving multiple districts with reliable power transmission.',
       totalSubstations: 45,
       employees: '2,500+',
       revenue: '₹3,200 Crore',
@@ -224,7 +235,8 @@ class StateInfoStaticData {
       coverage: 'Mumbai Metropolitan Region',
       customers: '3.2 Million',
       capacity: '2,500 MW',
-      description: 'One of India\'s oldest electricity distribution utilities serving Mumbai with reliable power supply.',
+      description:
+          'One of India\'s oldest electricity distribution utilities serving Mumbai with reliable power supply.',
       posts: samplePosts,
     ),
     DistributionCompany(
@@ -241,7 +253,8 @@ class StateInfoStaticData {
       coverage: 'Delhi NCR',
       customers: '7.5 Million',
       capacity: '8,500 MW',
-      description: 'Regulatory commission overseeing electricity distribution in the National Capital Territory of Delhi.',
+      description:
+          'Regulatory commission overseeing electricity distribution in the National Capital Territory of Delhi.',
       posts: samplePosts,
     ),
   ];
@@ -264,7 +277,13 @@ class StateInfoStaticData {
       energyMinister: 'Shri Devendra Fadnavis',
       energyMinisterPhoto: 'assets/logo.png',
       energyMix: EnergyMix(thermal: 62, hydro: 18, nuclear: 4, renewable: 16),
-      discomsList: ['MSEDCL', 'BEST', 'TPC-D', 'Adani Electricity', 'Reliance Energy'],
+      discomsList: [
+        'MSEDCL',
+        'BEST',
+        'TPC-D',
+        'Adani Electricity',
+        'Reliance Energy'
+      ],
       posts: samplePosts,
       mandals: [
         Mandal(
@@ -545,4 +564,3 @@ class StateInfoStaticData {
     ),
   ];
 }
-

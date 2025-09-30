@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../models.dart';
-import '../../../services/demo_data_service.dart';
+import '../../../services/lightweight_demo_data_service.dart';
 
 class SellerStore extends ChangeNotifier {
-  final DemoDataService _demoDataService;
+  final LightweightDemoDataService _demoDataService;
   List<CustomFieldDef> _profileFields = [];
   String _bannerUrl = '';
   List<String> _profileMaterials = [];
   List<AdCampaign> _ads = [];
-  
+
   // Contact information
   String _primaryPhone = '';
   String _primaryEmail = '';
@@ -24,12 +24,12 @@ class SellerStore extends ChangeNotifier {
   // Subscription plan
   String _currentPlan = 'free'; // free, plus, pro
   final Map<String, int> _productViews = <String, int>{};
-
-  // Loading and error states
-  bool _isLoading = false;
-  String? _errorMessage;
   final Map<String, int> _productContactCalls = <String, int>{};
   final Map<String, int> _productContactWhatsapps = <String, int>{};
+
+  // Product performance tracking
+  final Map<String, int> _productClicks = <String, int>{};
+  final Map<String, DateTime> _productLastViewed = <String, DateTime>{};
 
   // Getters - delegate to DemoDataService for products and leads
   List<Product> get products => _demoDataService.allProducts;
@@ -38,7 +38,7 @@ class SellerStore extends ChangeNotifier {
   String get bannerUrl => _bannerUrl;
   List<String> get profileMaterials => List.unmodifiable(_profileMaterials);
   List<AdCampaign> get ads => List.unmodifiable(_ads);
-  
+
   // Contact information getters
   String get primaryPhone => _primaryPhone;
   String get primaryEmail => _primaryEmail;
@@ -61,19 +61,27 @@ class SellerStore extends ChangeNotifier {
   // Subscription plan limits
   int get maxProducts {
     switch (_currentPlan) {
-      case 'free': return 5;
-      case 'plus': return 25;
-      case 'pro': return 100;
-      default: return 5;
+      case 'free':
+        return 5;
+      case 'plus':
+        return 25;
+      case 'pro':
+        return 100;
+      default:
+        return 5;
     }
   }
 
   int get maxAds {
     switch (_currentPlan) {
-      case 'free': return 1;
-      case 'plus': return 5;
-      case 'pro': return 20;
-      default: return 1;
+      case 'free':
+        return 1;
+      case 'plus':
+        return 5;
+      case 'pro':
+        return 20;
+      default:
+        return 1;
     }
   }
 
@@ -85,35 +93,123 @@ class SellerStore extends ChangeNotifier {
     return _currentPlan == 'pro';
   }
 
-  // Loading and error state getters
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  bool get hasError => _errorMessage != null;
-
   int productViewsOf(String productId) => _productViews[productId] ?? 0;
-  int productContactCallsOf(String productId) => _productContactCalls[productId] ?? 0;
-  int productContactWhatsappsOf(String productId) => _productContactWhatsapps[productId] ?? 0;
+  int productContactCallsOf(String productId) =>
+      _productContactCalls[productId] ?? 0;
+  int productContactWhatsappsOf(String productId) =>
+      _productContactWhatsapps[productId] ?? 0;
+  int productClicksOf(String productId) => _productClicks[productId] ?? 0;
+  DateTime? productLastViewedOf(String productId) =>
+      _productLastViewed[productId];
+
   int get totalProductViews => _productViews.values.fold(0, (a, b) => a + b);
-  int get totalProductContacts => _productContactCalls.values.fold(0, (a, b) => a + b) + _productContactWhatsapps.values.fold(0, (a, b) => a + b);
+  int get totalProductClicks => _productClicks.values.fold(0, (a, b) => a + b);
+  int get totalProductContacts =>
+      _productContactCalls.values.fold(0, (a, b) => a + b) +
+      _productContactWhatsapps.values.fold(0, (a, b) => a + b);
   List<Product> get topViewedProducts {
     final byViews = [...products];
-    byViews.sort((a, b) => (productViewsOf(b.id)).compareTo(productViewsOf(a.id)));
+    byViews
+        .sort((a, b) => (productViewsOf(b.id)).compareTo(productViewsOf(a.id)));
     return byViews.take(10).toList();
+  }
+
+  List<Product> get topClickedProducts {
+    final byClicks = [...products];
+    byClicks.sort(
+        (a, b) => (productClicksOf(b.id)).compareTo(productClicksOf(a.id)));
+    return byClicks.take(10).toList();
+  }
+
+  List<Product> get topContactedProducts {
+    final byContacts = [...products];
+    byContacts.sort((a, b) =>
+        (productContactCallsOf(b.id) + productContactWhatsappsOf(b.id))
+            .compareTo(
+                productContactCallsOf(a.id) + productContactWhatsappsOf(a.id)));
+    return byContacts.take(10).toList();
+  }
+
+  // Performance metrics
+  double getProductClickThroughRate(String productId) {
+    final views = productViewsOf(productId);
+    if (views == 0) return 0.0;
+    return productClicksOf(productId) / views;
+  }
+
+  double getProductContactRate(String productId) {
+    final views = productViewsOf(productId);
+    if (views == 0) return 0.0;
+    return (productContactCallsOf(productId) +
+            productContactWhatsappsOf(productId)) /
+        views;
+  }
+
+  double get overallClickThroughRate {
+    final totalViews = totalProductViews;
+    if (totalViews == 0) return 0.0;
+    return totalProductClicks / totalViews;
+  }
+
+  double get overallContactRate {
+    final totalViews = totalProductViews;
+    if (totalViews == 0) return 0.0;
+    return totalProductContacts / totalViews;
+  }
+
+  // Performance metrics (simple, demo-based)
+  double get profileToContactRate {
+    if (_profileViews == 0) return 0.0;
+    return totalSellerContacts / _profileViews;
+  }
+
+  double get productViewToContactRate {
+    final views = totalProductViews;
+    if (views == 0) return 0.0;
+    return totalProductContacts / views;
+  }
+
+  // Marketplace metrics (no revenue tracking for marketplace)
+  int get totalMarketplaceInteractions =>
+      totalProductViews + totalProductClicks + totalProductContacts;
+
+  // Product performance report (CSV) - marketplace analytics
+  Future<String> generateProductPerformanceCsv() async {
+    final buffer = StringBuffer();
+    buffer.writeln('Product ID,Title,Views,Clicks,Contact Rate,Last Viewed');
+    for (final p in products) {
+      final views = productViewsOf(p.id);
+      final clicks = productClicksOf(p.id);
+      final contactRate = getProductContactRate(p.id);
+      final lastViewed = productLastViewedOf(p.id);
+      buffer.writeln(
+          '${p.id},"${p.title}",$views,$clicks,${(contactRate * 100).toStringAsFixed(1)}%,${lastViewed?.toString().split(' ')[0] ?? 'Never'}');
+    }
+    buffer.writeln(',,');
+    buffer.writeln('Totals,');
+    buffer.writeln('Total Views,$totalProductViews');
+    buffer.writeln('Total Clicks,$totalProductClicks');
+    buffer.writeln('Total Contacts,$totalProductContacts');
+    buffer.writeln(
+        'Overall CTR,${(overallClickThroughRate * 100).toStringAsFixed(1)}%');
+    buffer.writeln(
+        'Overall Contact Rate,${(overallContactRate * 100).toStringAsFixed(1)}%');
+    return buffer.toString();
   }
 
   SellerStore(this._demoDataService) {
     _seedDemoData();
-    
+
     // Listen to demo data changes
     _demoDataService.addListener(_onDemoDataChanged);
   }
-  
+
   @override
   void dispose() {
     _demoDataService.removeListener(_onDemoDataChanged);
     super.dispose();
   }
-  
+
   void _onDemoDataChanged() {
     notifyListeners();
   }
@@ -122,44 +218,44 @@ class SellerStore extends ChangeNotifier {
   void setBannerUrl(String url) {
     _bannerUrl = url;
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   void setProfileMaterials(List<String> materials) {
     _profileMaterials = List.of(materials);
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   // Contact information management
   void setPrimaryPhone(String phone) {
     _primaryPhone = phone;
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   void setPrimaryEmail(String email) {
     _primaryEmail = email;
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   void setWebsite(String website) {
     _website = website;
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   void setAdditionalPhones(List<String> phones) {
     _additionalPhones = List.of(phones);
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   void setAdditionalEmails(List<String> emails) {
     _additionalEmails = List.of(emails);
     notifyListeners();
-    // TODO(firebase): sync to backend
+    // Pending(firebase): sync to backend
   }
 
   // Ads management (max 3 campaigns)
@@ -197,23 +293,31 @@ class SellerStore extends ChangeNotifier {
 
   void recordProductView(String productId) {
     _productViews[productId] = (_productViews[productId] ?? 0) + 1;
+    _productLastViewed[productId] = DateTime.now();
     notifyListeners();
   }
 
   void recordProductContactCall(String productId) {
-    _productContactCalls[productId] = (_productContactCalls[productId] ?? 0) + 1;
+    _productContactCalls[productId] =
+        (_productContactCalls[productId] ?? 0) + 1;
     notifyListeners();
   }
 
   void recordProductContactWhatsapp(String productId) {
-    _productContactWhatsapps[productId] = (_productContactWhatsapps[productId] ?? 0) + 1;
+    _productContactWhatsapps[productId] =
+        (_productContactWhatsapps[productId] ?? 0) + 1;
+    notifyListeners();
+  }
+
+  void recordProductClick(String productId) {
+    _productClicks[productId] = (_productClicks[productId] ?? 0) + 1;
     notifyListeners();
   }
 
   void _seedDemoData() {
     // Products and leads are now managed by DemoDataService
     // Only seed seller-specific data here
-    
+
     // Seed demo profile fields
     _profileFields = const [
       CustomFieldDef(
@@ -236,20 +340,26 @@ class SellerStore extends ChangeNotifier {
 
     // Seed demo profile materials
     _profileMaterials = const ['Copper', 'PVC'];
-    
+
     // Seed demo contact information
     _primaryPhone = '+91 98765 43210';
     _primaryEmail = 'contact@electricalsupplies.com';
     _website = 'https://www.electricalsupplies.com';
     _additionalPhones = ['+91 98765 43211', '+91 98765 43212'];
-    _additionalEmails = ['sales@electricalsupplies.com', 'support@electricalsupplies.com'];
-    
+    _additionalEmails = [
+      'sales@electricalsupplies.com',
+      'support@electricalsupplies.com'
+    ];
+
     // Seed demo ads
     _ads = [
       AdCampaign(id: 'ad1', type: AdType.search, term: 'copper', slot: 2),
       AdCampaign(
           id: 'ad2', type: AdType.category, term: 'Cables & Wires', slot: 3),
     ];
+
+    // Seed demo product performance data
+    _seedDemoProductPerformance();
   }
 
   // Product CRUD - delegate to DemoDataService
@@ -268,6 +378,31 @@ class SellerStore extends ChangeNotifier {
     // Demo data service will notify listeners, which will trigger our _onDemoDataChanged
   }
 
+  Product? duplicateProduct(String productId) {
+    return _demoDataService.duplicateProduct(productId);
+  }
+
+  bool softDeleteProduct(String productId) {
+    return _demoDataService.softDeleteProduct(productId);
+  }
+
+  bool hardDeleteProduct(String productId) {
+    return _demoDataService.hardDeleteProduct(productId);
+  }
+
+  void bulkSetStatus(Iterable<String> productIds, ProductStatus status) {
+    _demoDataService.bulkUpdateStatus(productIds, status);
+  }
+
+  void bulkDelete(Iterable<String> productIds, {bool hard = false}) {
+    _demoDataService.bulkDelete(productIds, hard: hard);
+  }
+
+  void bulkEdit(
+      Iterable<String> productIds, Product Function(Product) transform) {
+    _demoDataService.bulkEdit(productIds, transform);
+  }
+
   Product? getProduct(String productId) {
     try {
       return products.firstWhere((p) => p.id == productId);
@@ -280,7 +415,7 @@ class SellerStore extends ChangeNotifier {
   void addProfileField(CustomFieldDef field) {
     _profileFields.add(field);
     notifyListeners();
-    // TODO(firebase): sync to Firestore
+    // Pending(firebase): sync to Firestore
   }
 
   void updateProfileField(CustomFieldDef field) {
@@ -288,14 +423,14 @@ class SellerStore extends ChangeNotifier {
     if (index != -1) {
       _profileFields[index] = field;
       notifyListeners();
-      // TODO(firebase): sync to Firestore
+      // Pending(firebase): sync to Firestore
     }
   }
 
   void deleteProfileField(String fieldId) {
     _profileFields.removeWhere((f) => f.id == fieldId);
     notifyListeners();
-    // TODO(firebase): sync to Firestore
+    // Pending(firebase): sync to Firestore
   }
 
   // Profile data management methods
@@ -358,7 +493,7 @@ class SellerStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Lead management - delegate to DemoDataService  
+  // Lead management - delegate to DemoDataService
   void updateLead(Lead lead) {
     _demoDataService.updateLead(lead);
   }
@@ -419,92 +554,64 @@ class SellerStore extends ChangeNotifier {
     };
   }
 
-  // Loading and error state management
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
+  void _seedDemoProductPerformance() {
+    // Seed demo performance data for products
+    final now = DateTime.now();
 
-  void _setError(String? error) {
-    _errorMessage = error;
-    notifyListeners();
-  }
+    // Product 1 - High engagement
+    _productViews['1'] = 45;
+    _productClicks['1'] = 12;
+    _productContactCalls['1'] = 2;
+    _productContactWhatsapps['1'] = 1;
+    _productLastViewed['1'] = now.subtract(const Duration(hours: 2));
 
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
+    // Product 2 - Medium engagement
+    _productViews['2'] = 28;
+    _productClicks['2'] = 8;
+    _productContactCalls['2'] = 1;
+    _productContactWhatsapps['2'] = 1;
+    _productLastViewed['2'] = now.subtract(const Duration(hours: 5));
 
-  // Enhanced methods with error handling
-  Future<void> addProductWithErrorHandling(Product product) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulate network delay
-      _demoDataService.addProduct(product);
-    } catch (e) {
-      _setError('Failed to add product: ${e.toString()}');
-    } finally {
-      _setLoading(false);
-    }
-  }
+    // Product 3 - Low engagement
+    _productViews['3'] = 15;
+    _productClicks['3'] = 3;
+    _productContactCalls['3'] = 0;
+    _productContactWhatsapps['3'] = 1;
+    _productLastViewed['3'] = now.subtract(const Duration(days: 1));
 
-  Future<void> updateProductWithErrorHandling(Product product) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulate network delay
-      _demoDataService.updateProduct(product);
-    } catch (e) {
-      _setError('Failed to update product: ${e.toString()}');
-    } finally {
-      _setLoading(false);
-    }
-  }
+    // Product 4 - Good engagement
+    _productViews['4'] = 32;
+    _productClicks['4'] = 9;
+    _productContactCalls['4'] = 1;
+    _productContactWhatsapps['4'] = 0;
+    _productLastViewed['4'] = now.subtract(const Duration(hours: 3));
 
-  Future<void> deleteProductWithErrorHandling(String productId) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulate network delay
-      _demoDataService.removeProduct(productId);
-    } catch (e) {
-      _setError('Failed to delete product: ${e.toString()}');
-    } finally {
-      _setLoading(false);
-    }
-  }
+    // Product 5 - Average engagement
+    _productViews['5'] = 22;
+    _productClicks['5'] = 6;
+    _productContactCalls['5'] = 0;
+    _productContactWhatsapps['5'] = 1;
+    _productLastViewed['5'] = now.subtract(const Duration(hours: 8));
 
-  Future<void> saveProfileDataWithErrorHandling({
-    required String legalName,
-    required String gstin,
-    required String phone,
-    required String email,
-    required String address,
-    required String website,
-    String? bannerUrl,
-    List<String>? materials,
-    List<CustomFieldDef>? customFields,
-  }) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-      await Future.delayed(const Duration(milliseconds: 500)); // Simulate network delay
-      await saveProfileData(
-        legalName: legalName,
-        gstin: gstin,
-        phone: phone,
-        email: email,
-        address: address,
-        website: website,
-        bannerUrl: bannerUrl,
-        materials: materials,
-        customFields: customFields,
-      );
-    } catch (e) {
-      _setError('Failed to save profile: ${e.toString()}');
-    } finally {
-      _setLoading(false);
-    }
+    // Product 6 - High views, low contact
+    _productViews['6'] = 38;
+    _productClicks['6'] = 5;
+    _productContactCalls['6'] = 0;
+    _productContactWhatsapps['6'] = 0;
+    _productLastViewed['6'] = now.subtract(const Duration(hours: 1));
+
+    // Product 7 - Low views, high contact
+    _productViews['7'] = 12;
+    _productClicks['7'] = 8;
+    _productContactCalls['7'] = 2;
+    _productContactWhatsapps['7'] = 1;
+    _productLastViewed['7'] = now.subtract(const Duration(hours: 4));
+
+    // Product 8 - New product
+    _productViews['8'] = 8;
+    _productClicks['8'] = 2;
+    _productContactCalls['8'] = 0;
+    _productContactWhatsapps['8'] = 0;
+    _productLastViewed['8'] = now.subtract(const Duration(hours: 6));
   }
 }

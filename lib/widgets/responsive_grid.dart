@@ -8,12 +8,12 @@ class ResponsiveGridConfig {
   static const double mobileSpacing = 8.0;
   static const double tabletSpacing = 12.0;
   static const double desktopSpacing = 16.0;
-  
+
   /// Product card configurations
   static const double productCardMaxWidth = 280.0;
   static const double productCardMinWidth = 140.0;
-  
-  /// Category card configurations  
+
+  /// Category card configurations
   static const double categoryCardMaxWidth = 200.0;
   static const double categoryCardMinWidth = 120.0;
 
@@ -28,15 +28,15 @@ class ResponsiveGridConfig {
   static int getProductColumns(double availableWidth) {
     final spacing = getSpacing(availableWidth);
     final minCardWidth = productCardMinWidth + spacing;
-    
+
     // Calculate how many cards can fit
     int columns = (availableWidth / minCardWidth).floor();
-    
+
     // Apply sensible limits based on screen size
     if (availableWidth >= AppBreakpoints.desktop) {
       return columns.clamp(3, 5); // 3-5 columns on desktop
     } else if (availableWidth >= AppBreakpoints.tablet) {
-      return columns.clamp(2, 4); // 2-4 columns on tablet  
+      return columns.clamp(2, 4); // 2-4 columns on tablet
     } else {
       return columns.clamp(2, 3); // 2-3 columns on mobile
     }
@@ -46,9 +46,9 @@ class ResponsiveGridConfig {
   static int getCategoryColumns(double availableWidth) {
     final spacing = getSpacing(availableWidth);
     final minCardWidth = categoryCardMinWidth + spacing;
-    
+
     int columns = (availableWidth / minCardWidth).floor();
-    
+
     if (availableWidth >= AppBreakpoints.desktop) {
       return columns.clamp(4, 6); // 4-6 columns on desktop (reduced from 8)
     } else if (availableWidth >= AppBreakpoints.tablet) {
@@ -60,15 +60,23 @@ class ResponsiveGridConfig {
 
   /// Get adaptive aspect ratio for product cards
   static double getProductAspectRatio(double screenWidth) {
-    if (screenWidth >= AppBreakpoints.desktop) return 0.65; // More height on desktop for content
-    if (screenWidth >= AppBreakpoints.tablet) return 0.6; // More height on tablet 
+    if (screenWidth >= AppBreakpoints.desktop) {
+      return 0.65; // More height on desktop for content
+    }
+    if (screenWidth >= AppBreakpoints.tablet) {
+      return 0.6; // More height on tablet
+    }
     return 0.55; // Much taller on mobile to prevent overflow
   }
 
   /// Get adaptive aspect ratio for category cards - now same scale as product cards
   static double getCategoryAspectRatio(double screenWidth) {
-    if (screenWidth >= AppBreakpoints.desktop) return 0.65; // Same as product cards
-    if (screenWidth >= AppBreakpoints.tablet) return 0.6; // Same as product cards
+    if (screenWidth >= AppBreakpoints.desktop) {
+      return 0.65; // Same as product cards
+    }
+    if (screenWidth >= AppBreakpoints.tablet) {
+      return 0.6; // Same as product cards
+    }
     return 0.55; // Same as product cards for consistency
   }
 }
@@ -86,18 +94,21 @@ class ResponsiveGridDelegate extends SliverGridDelegate {
   @override
   SliverGridLayout getLayout(SliverConstraints constraints) {
     final spacing = ResponsiveGridConfig.getSpacing(availableWidth);
-    
+
     int crossAxisCount;
     double childAspectRatio;
-    
+
     switch (gridType) {
       case ResponsiveGridType.product:
         crossAxisCount = ResponsiveGridConfig.getProductColumns(availableWidth);
-        childAspectRatio = ResponsiveGridConfig.getProductAspectRatio(availableWidth);
+        childAspectRatio =
+            ResponsiveGridConfig.getProductAspectRatio(availableWidth);
         break;
       case ResponsiveGridType.category:
-        crossAxisCount = ResponsiveGridConfig.getCategoryColumns(availableWidth);
-        childAspectRatio = ResponsiveGridConfig.getCategoryAspectRatio(availableWidth);
+        crossAxisCount =
+            ResponsiveGridConfig.getCategoryColumns(availableWidth);
+        childAspectRatio =
+            ResponsiveGridConfig.getCategoryAspectRatio(availableWidth);
         break;
     }
 
@@ -114,7 +125,8 @@ class ResponsiveGridDelegate extends SliverGridDelegate {
   @override
   bool shouldRelayout(covariant SliverGridDelegate oldDelegate) {
     return oldDelegate is ResponsiveGridDelegate &&
-        (oldDelegate.gridType != gridType || oldDelegate.availableWidth != availableWidth);
+        (oldDelegate.gridType != gridType ||
+            oldDelegate.availableWidth != availableWidth);
   }
 }
 
@@ -147,10 +159,10 @@ class ResponsiveGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < AppBreakpoints.tablet;
-        
+
         // Use landscape layout for product cards on mobile when forced
-        if (forceLandscapeOnMobile && 
-            gridType == ResponsiveGridType.product && 
+        if (forceLandscapeOnMobile &&
+            gridType == ResponsiveGridType.product &&
             isMobile) {
           return ListView.builder(
             padding: padding ?? const EdgeInsets.symmetric(vertical: 8),
@@ -160,7 +172,7 @@ class ResponsiveGrid extends StatelessWidget {
             itemBuilder: (context, index) => children[index],
           );
         }
-        
+
         // Use regular grid for desktop/tablet or categories
         final delegate = ResponsiveGridDelegate(
           gridType: gridType,

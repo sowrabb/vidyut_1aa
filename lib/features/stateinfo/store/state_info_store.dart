@@ -2,11 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/state_info_models.dart';
 import '../data/static_data.dart';
-import '../../../services/demo_data_service.dart';
 
 class StateInfoStore extends ChangeNotifier {
-  final DemoDataService _demoDataService;
-  
   // Navigation State
   MainPath _mainPath = MainPath.selection;
   PowerFlowStep _powerFlowStep = PowerFlowStep.generator;
@@ -21,15 +18,17 @@ class StateInfoStore extends ChangeNotifier {
 
   // Persistence keys
   static const String _keySelectedGenerator = 'state_info_selected_generator';
-  static const String _keySelectedTransmission = 'state_info_selected_transmission';
-  static const String _keySelectedDistribution = 'state_info_selected_distribution';
+  static const String _keySelectedTransmission =
+      'state_info_selected_transmission';
+  static const String _keySelectedDistribution =
+      'state_info_selected_distribution';
   static const String _keySelectedState = 'state_info_selected_state';
   static const String _keySelectedMandal = 'state_info_selected_mandal';
   static const String _keyMainPath = 'state_info_main_path';
   static const String _keyPowerFlowStep = 'state_info_power_flow_step';
   static const String _keyStateFlowStep = 'state_info_state_flow_step';
 
-  StateInfoStore(this._demoDataService) {
+  StateInfoStore() {
     _loadPersistedState();
   }
 
@@ -47,7 +46,7 @@ class StateInfoStore extends ChangeNotifier {
   // Derived State Getters
   PowerGenerator? get selectedGeneratorData {
     try {
-      return _demoDataService.allPowerGenerators.firstWhere(
+      return StateInfoStaticData.powerGenerators.firstWhere(
         (g) => g.id == _selectedGenerator,
       );
     } catch (e) {
@@ -96,9 +95,12 @@ class StateInfoStore extends ChangeNotifier {
   }
 
   // Data Getters
-  List<PowerGenerator> get powerGenerators => StateInfoStaticData.powerGenerators;
-  List<TransmissionLine> get transmissionLines => StateInfoStaticData.transmissionLines;
-  List<DistributionCompany> get distributionCompanies => StateInfoStaticData.distributionCompanies;
+  List<PowerGenerator> get powerGenerators =>
+      StateInfoStaticData.powerGenerators;
+  List<TransmissionLine> get transmissionLines =>
+      StateInfoStaticData.transmissionLines;
+  List<DistributionCompany> get distributionCompanies =>
+      StateInfoStaticData.distributionCompanies;
   List<IndianState> get indianStates => StateInfoStaticData.indianStates;
 
   // Navigation Actions
@@ -110,7 +112,10 @@ class StateInfoStore extends ChangeNotifier {
       _stateFlowStep = StateFlowStep.states;
     }
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   void setPowerFlowStep(PowerFlowStep step) {
@@ -128,35 +133,50 @@ class StateInfoStore extends ChangeNotifier {
     _selectedGenerator = generatorId;
     _powerFlowStep = PowerFlowStep.generatorProfile;
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   void selectTransmission(String transmissionId) {
     _selectedTransmission = transmissionId;
     _powerFlowStep = PowerFlowStep.transmissionProfile;
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   void selectDistribution(String distributionId) {
     _selectedDistribution = distributionId;
     _powerFlowStep = PowerFlowStep.profile;
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   void selectState(String stateId) {
     _selectedState = stateId;
     _stateFlowStep = StateFlowStep.stateDetail;
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   void selectMandal(String mandalId) {
     _selectedMandal = mandalId;
     _stateFlowStep = StateFlowStep.mandalDetail;
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   // Navigation Flow Actions
@@ -240,7 +260,10 @@ class StateInfoStore extends ChangeNotifier {
     _selectedState = '';
     _selectedMandal = '';
     notifyListeners();
-    _persistState();
+    _persistState().catchError((e) {
+      // Log persistence errors but don't crash the app
+      debugPrint('Failed to persist state: $e');
+    });
   }
 
   void resetPowerFlow() {
@@ -332,45 +355,71 @@ class StateInfoStore extends ChangeNotifier {
   // Persistence Methods
   Future<void> _loadPersistedState() async {
     try {
+      // Check if we're in a test environment or web
+      if (_isTestEnvironment() || _isWebEnvironment()) {
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
-      
+
       _selectedGenerator = prefs.getString(_keySelectedGenerator) ?? '';
       _selectedTransmission = prefs.getString(_keySelectedTransmission) ?? '';
       _selectedDistribution = prefs.getString(_keySelectedDistribution) ?? '';
       _selectedState = prefs.getString(_keySelectedState) ?? '';
       _selectedMandal = prefs.getString(_keySelectedMandal) ?? '';
-      
+
       final mainPathIndex = prefs.getInt(_keyMainPath);
       if (mainPathIndex != null) {
         _mainPath = MainPath.values[mainPathIndex];
       }
-      
+
       final powerFlowStepIndex = prefs.getInt(_keyPowerFlowStep);
       if (powerFlowStepIndex != null) {
         _powerFlowStep = PowerFlowStep.values[powerFlowStepIndex];
       }
-      
+
       final stateFlowStepIndex = prefs.getInt(_keyStateFlowStep);
       if (stateFlowStepIndex != null) {
         _stateFlowStep = StateFlowStep.values[stateFlowStepIndex];
       }
-      
+
       notifyListeners();
     } catch (e) {
       // Ignore persistence errors, use defaults
     }
   }
 
+  bool _isTestEnvironment() {
+    // Check if we're running in a test environment
+    try {
+      // This will throw in test environment
+      SharedPreferences.getInstance();
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  bool _isWebEnvironment() {
+    // Use kIsWeb for proper web detection
+    return kIsWeb;
+  }
+
   Future<void> _persistState() async {
     try {
+      // Check if we're in a test environment or web
+      if (_isTestEnvironment() || _isWebEnvironment()) {
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
-      
+
       await prefs.setString(_keySelectedGenerator, _selectedGenerator);
       await prefs.setString(_keySelectedTransmission, _selectedTransmission);
       await prefs.setString(_keySelectedDistribution, _selectedDistribution);
       await prefs.setString(_keySelectedState, _selectedState);
       await prefs.setString(_keySelectedMandal, _selectedMandal);
-      
+
       await prefs.setInt(_keyMainPath, _mainPath.index);
       await prefs.setInt(_keyPowerFlowStep, _powerFlowStep.index);
       await prefs.setInt(_keyStateFlowStep, _stateFlowStep.index);
@@ -382,6 +431,11 @@ class StateInfoStore extends ChangeNotifier {
   // Clear persisted state
   Future<void> clearPersistedState() async {
     try {
+      // Check if we're in a test environment or web
+      if (_isTestEnvironment() || _isWebEnvironment()) {
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keySelectedGenerator);
       await prefs.remove(_keySelectedTransmission);

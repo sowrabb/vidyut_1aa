@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../sell/models.dart';
-import '../../services/demo_data_service.dart';
+import '../../services/lightweight_demo_data_service.dart';
 
 class LeadsStore extends ChangeNotifier {
-  final DemoDataService _demoDataService;
+  final LightweightDemoDataService _demoDataService;
   List<Lead> _results = [];
   List<Lead> get results => _results;
 
@@ -28,7 +28,6 @@ class LeadsStore extends ChangeNotifier {
   void _onDemoDataChanged() {
     _refresh();
   }
-
 
   void setQuery(String q) {
     query = q;

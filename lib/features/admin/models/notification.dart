@@ -23,7 +23,8 @@ class AudienceFilter {
     Set<String>? states,
     Set<String>? userIds,
     bool? isSeller,
-  }) => AudienceFilter(
+  }) =>
+      AudienceFilter(
         roles: roles ?? this.roles,
         states: states ?? this.states,
         userIds: userIds ?? this.userIds,
@@ -69,10 +70,12 @@ class NotificationTemplate {
         'body': body,
       };
 
-  factory NotificationTemplate.fromJson(Map<String, dynamic> json) => NotificationTemplate(
+  factory NotificationTemplate.fromJson(Map<String, dynamic> json) =>
+      NotificationTemplate(
         id: json['id'] as String,
         name: json['name'] as String,
-        channel: NotificationChannel.values.firstWhere((e) => e.name == json['channel']),
+        channel: NotificationChannel.values
+            .firstWhere((e) => e.name == json['channel']),
         title: json['title'] as String,
         body: json['body'] as String,
       );
@@ -105,7 +108,8 @@ class NotificationDraft {
     Map<NotificationChannel, NotificationTemplate>? templates,
     DateTime? scheduledAt,
     bool? respectQuietHours,
-  }) => NotificationDraft(
+  }) =>
+      NotificationDraft(
         id: id,
         type: type ?? this.type,
         channels: channels ?? this.channels,
@@ -127,20 +131,58 @@ class NotificationDraft {
         'respectQuietHours': respectQuietHours,
       };
 
-  factory NotificationDraft.fromJson(Map<String, dynamic> json) => NotificationDraft(
+  factory NotificationDraft.fromJson(Map<String, dynamic> json) =>
+      NotificationDraft(
         id: json['id'] as String,
         type: NotificationType.values.firstWhere((e) => e.name == json['type']),
         channels: {...(json['channels'] as List? ?? const [])}
-            .map((e) => NotificationChannel.values.firstWhere((c) => c.name == e))
+            .map((e) =>
+                NotificationChannel.values.firstWhere((c) => c.name == e))
             .toSet(),
-        audience: AudienceFilter.fromJson(json['audience'] as Map<String, dynamic>),
+        audience:
+            AudienceFilter.fromJson(json['audience'] as Map<String, dynamic>),
         templates: {
-          for (final entry in (json['templates'] as Map<String, dynamic>? ?? const {} ).entries)
-            NotificationChannel.values.firstWhere((c) => c.name == entry.key): NotificationTemplate.fromJson(entry.value as Map<String, dynamic>)
+          for (final entry
+              in (json['templates'] as Map<String, dynamic>? ?? const {})
+                  .entries)
+            NotificationChannel.values.firstWhere((c) => c.name == entry.key):
+                NotificationTemplate.fromJson(
+                    entry.value as Map<String, dynamic>)
         },
-        scheduledAt: (json['scheduledAt'] as String?) != null ? DateTime.parse(json['scheduledAt'] as String) : null,
+        scheduledAt: (json['scheduledAt'] as String?) != null
+            ? DateTime.parse(json['scheduledAt'] as String)
+            : null,
         respectQuietHours: (json['respectQuietHours'] as bool?) ?? true,
       );
 }
 
+/// Notification Send Result
+@immutable
+class NotificationSendResult {
+  final int sentCount;
+  final int failedCount;
+  final String? jobId;
+  final String? error;
 
+  const NotificationSendResult({
+    required this.sentCount,
+    required this.failedCount,
+    this.jobId,
+    this.error,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'sent_count': sentCount,
+        'failed_count': failedCount,
+        if (jobId != null) 'job_id': jobId,
+        if (error != null) 'error': error,
+      };
+
+  factory NotificationSendResult.fromJson(Map<String, dynamic> json) =>
+      NotificationSendResult(
+        sentCount: json['sent_count'] as int,
+        failedCount: json['failed_count'] as int,
+        jobId: json['job_id'] as String?,
+        error: json['error'] as String?,
+      );
+}

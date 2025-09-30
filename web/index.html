@@ -20,6 +20,7 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
   <meta name="color-scheme" content="light">
+  <meta name="flutter-web-renderer" content="html">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -32,6 +33,17 @@
 
   <title>vidyut</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- pdfx web support: pdf.js -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"></script>
+  <script>
+    // Configure pdf.js worker location
+    window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

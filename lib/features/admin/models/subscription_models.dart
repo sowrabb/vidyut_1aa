@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 enum PlanStatus { draft, published, archived }
+
 enum BillingInterval { monthly, quarterly, annual }
+
 enum PriceStatus { active, deprecated }
+
 enum SubscriptionState { active, pastDue, canceled, paused }
 
 @immutable
@@ -35,15 +38,40 @@ class Plan {
     int? defaultPointsPerCycle,
     bool? visiblePublicly,
     int? version,
-  }) => Plan(
+  }) =>
+      Plan(
         id: id,
         name: name ?? this.name,
         code: code ?? this.code,
         description: description ?? this.description,
         status: status ?? this.status,
-        defaultPointsPerCycle: defaultPointsPerCycle ?? this.defaultPointsPerCycle,
+        defaultPointsPerCycle:
+            defaultPointsPerCycle ?? this.defaultPointsPerCycle,
         visiblePublicly: visiblePublicly ?? this.visiblePublicly,
         version: version ?? this.version,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'code': code,
+        'description': description,
+        'status': status.toString().split('.').last,
+        'default_points_per_cycle': defaultPointsPerCycle,
+        'visible_publicly': visiblePublicly,
+        'version': version,
+      };
+
+  factory Plan.fromJson(Map<String, dynamic> json) => Plan(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        code: json['code'] as String,
+        description: json['description'] as String? ?? '',
+        status: PlanStatus.values
+            .firstWhere((s) => s.toString().split('.').last == json['status']),
+        defaultPointsPerCycle: json['default_points_per_cycle'] as int? ?? 0,
+        visiblePublicly: json['visible_publicly'] as bool? ?? true,
+        version: json['version'] as int? ?? 1,
       );
 }
 
@@ -76,7 +104,8 @@ class Price {
     PriceStatus? status,
     DateTime? effectiveFrom,
     DateTime? effectiveTo,
-  }) => Price(
+  }) =>
+      Price(
         id: id,
         planId: planId,
         currency: currency ?? this.currency,
@@ -212,7 +241,7 @@ class PlanCardConfig {
   final List<String> features;
   final bool isPopular;
 
-  PlanCardConfig({
+  const PlanCardConfig({
     required this.id,
     required this.title,
     required this.priceLabel,
@@ -227,7 +256,8 @@ class PlanCardConfig {
     String? periodLabel,
     List<String>? features,
     bool? isPopular,
-  }) => PlanCardConfig(
+  }) =>
+      PlanCardConfig(
         id: id,
         title: title ?? this.title,
         priceLabel: priceLabel ?? this.priceLabel,
@@ -270,10 +300,16 @@ class PlanCardConfig {
     // features parsing is best-effort
     final featuresStr = map['features']?.toString() ?? '[]';
     final feats = featuresStr.length >= 2
-        ? featuresStr.substring(1, featuresStr.length - 1).split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+        ? featuresStr
+            .substring(1, featuresStr.length - 1)
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
         : <String>[];
     return PlanCardConfig(
-      id: map['id']?.toString() ?? 'card_${DateTime.now().millisecondsSinceEpoch}',
+      id: map['id']?.toString() ??
+          'card_${DateTime.now().millisecondsSinceEpoch}',
       title: map['title']?.toString() ?? '',
       priceLabel: map['priceLabel']?.toString() ?? '',
       periodLabel: map['periodLabel']?.toString() ?? '',
@@ -282,5 +318,3 @@ class PlanCardConfig {
     );
   }
 }
-
-

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/provider_registry.dart';
 import '../../app/layout/adaptive.dart';
 import 'package:ionicons/ionicons.dart';
 import '../messaging/messaging_pages.dart';
-import '../messaging/messaging_store.dart';
 import '../../app/tokens.dart';
 import '../../widgets/notification_badge.dart';
+import 'widgets/profile_settings_widgets.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -13,14 +14,13 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
         backgroundColor: AppColors.surface,
         appBar: AppBar(
           title: const Text('Your Profile'),
           bottom: const TabBar(isScrollable: true, tabs: [
             Tab(text: 'Overview'),
-            Tab(text: 'Saved'),
             Tab(text: 'RFQs'),
             Tab(text: 'Settings'),
           ]),
@@ -28,13 +28,13 @@ class ProfilePage extends StatelessWidget {
         body: SafeArea(
           child: TabBarView(children: [
             _OverviewTab(),
-            _SavedTab(),
             _RfqsTab(),
             _SettingsTab(),
           ]),
         ),
-        floatingActionButton: Consumer<MessagingStore>(
-          builder: (context, messagingStore, child) {
+        floatingActionButton: Consumer(
+          builder: (context, ref, child) {
+            final messagingStore = ref.watch(messagingStoreProvider);
             return NotificationBadge(
               count: messagingStore.unreadCount,
               child: FloatingActionButton(
@@ -97,6 +97,21 @@ class _ProfileHeader extends StatelessWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ])),
           OutlinedButton(onPressed: () {}, child: const Text('Edit Profile')),
+          const SizedBox(width: 8),
+          Consumer(
+            builder: (context, ref, child) {
+              final authService = ref.watch(otpAuthServiceProvider);
+              return TextButton(
+                onPressed: () async {
+                  await authService.logout();
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacementNamed('/');
+                  }
+                },
+                child: Text(authService.isGuest ? 'Sign Up' : 'Logout'),
+              );
+            },
+          ),
         ]),
       ),
     );
@@ -161,20 +176,22 @@ class _MessagesShortcutCard extends StatelessWidget {
           ],
         ),
         padding: const EdgeInsets.all(16),
-        child: Consumer<MessagingStore>(
-          builder: (context, messagingStore, child) {
+        child: Consumer(
+          builder: (context, ref, child) {
+            final messagingStore = ref.watch(messagingStoreProvider);
             return Row(
               children: [
                 NotificationBadge(
                   count: messagingStore.unreadCount,
-                  child: const Icon(Ionicons.chatbubble_ellipses_outline, color: Colors.white),
+                  child: const Icon(Ionicons.chatbubble_ellipses_outline,
+                      color: Colors.white),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
                     'Messages',
-                    style:
-                        TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600),
                   ),
                 ),
                 const Icon(Ionicons.arrow_forward, color: Colors.white),
@@ -187,20 +204,6 @@ class _MessagesShortcutCard extends StatelessWidget {
   }
 }
 
-class _SavedTab extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ContentClamp(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          Text('TODO: Saved products & sellers'),
-        ],
-      ),
-    );
-  }
-}
-
 class _RfqsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -208,21 +211,42 @@ class _RfqsTab extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: const [
-          Text('TODO: Buyer RFQs & statuses'),
+          Text('Coming soon: Buyer RFQs & statuses'),
         ],
       ),
     );
   }
 }
 
-class _SettingsTab extends StatelessWidget {
+class _SettingsTab extends ConsumerWidget {
+  const _SettingsTab();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userStore = ref.watch(userStoreProvider);
+
     return ContentClamp(
       child: ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
-          Text('TODO: Password, notifications, preferences'),
+        children: [
+          // Profile Section
+          ProfileSection(profile: userStore.profile),
+          const SizedBox(height: 24),
+
+          // Security Section
+          SecuritySection(userStore: userStore),
+          const SizedBox(height: 24),
+
+          // Notifications Section
+          NotificationsSection(settings: userStore.notificationSettings),
+          const SizedBox(height: 24),
+
+          // Preferences Section
+          PreferencesSection(preferences: userStore.preferences),
+          const SizedBox(height: 24),
+
+          // Account Actions Section
+          AccountActionsSection(userStore: userStore),
         ],
       ),
     );

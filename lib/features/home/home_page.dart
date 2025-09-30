@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/layout/app_shell_scaffold.dart';
-import '../../app/app_state.dart';
+import '../../../app/provider_registry.dart';
 import '../../widgets/section_header.dart';
 import 'widgets/hero_slideshow.dart';
 import 'widgets/trusted_brands_strip.dart';
@@ -11,21 +11,21 @@ import 'widgets/categories_grid.dart';
 import 'widgets/products_grid.dart';
 import 'widgets/location_button.dart';
 import '../admin/admin_shell.dart';
+import '../admin/auth/admin_login_page.dart';
 import '../search/search_page.dart';
 import '../categories/categories_page.dart';
-import '../splash/splash_screen.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
+    final location = ref.watch(locationControllerProvider);
 
     // IMPORTANT: HomePage is hosted inside ResponsiveScaffold which already
     // provides the global navigation rail/bottom bar. So HomePage should use
@@ -40,19 +40,23 @@ class _HomePageState extends State<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               LocationButton(
-                city: appState.city,
-                state: appState.state,
-                radiusKm: appState.radiusKm,
-                area: appState.area,
-                onPicked: (res) => appState.setLocation(
-                  city: res.city,
-                  area: res.area,
-                  state: res.state,
-                  radiusKm: res.radiusKm,
-                  mode: res.isAuto ? LocationMode.auto : LocationMode.manual,
-                  latitude: res.latitude,
-                  longitude: res.longitude,
-                ),
+                city: location.city,
+                state: location.stateName,
+                radiusKm: location.radiusKm,
+                area: location.area,
+                onPicked: (res) => ref
+                    .read(locationControllerProvider.notifier)
+                    .setLocation(
+                      city: res.city,
+                      area: res.area,
+                      stateName: res.state,
+                      radiusKm: res.radiusKm,
+                      mode: res.isAuto
+                          ? LocationMode.auto
+                          : LocationMode.manual,
+                      latitude: res.latitude,
+                      longitude: res.longitude,
+                    ),
               ),
               if (context.isDesktop) ...[
                 const SizedBox(width: 8),
@@ -64,7 +68,7 @@ class _HomePageState extends State<HomePage> {
                 //   label: const Text('Firebase Test'),
                 // ),
                 // const SizedBox(width: 8),
-                if (appState.isAdmin)
+                if (ref.watch(adminAuthServiceProvider).isLoggedIn)
                   FilledButton.icon(
                     onPressed: () {
                       Navigator.of(context).push(
@@ -77,7 +81,10 @@ class _HomePageState extends State<HomePage> {
                 else
                   OutlinedButton.icon(
                     onPressed: () {
-                      _promptAdmin(context, appState);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const AdminLoginPage()),
+                      );
                     },
                     icon: const Icon(Icons.lock_outline),
                     label: const Text('Admin Login'),
@@ -132,7 +139,7 @@ class _HomePageState extends State<HomePage> {
                   child: TrustedBrandsStrip(),
                 ),
               ),
-              
+
               // Categories Section Header
               SliverToBoxAdapter(
                 child: SectionHeader(
@@ -149,7 +156,7 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
                 ),
               ),
-              
+
               // Categories Grid
               const SliverToBoxAdapter(
                 child: Padding(
@@ -157,8 +164,8 @@ class _HomePageState extends State<HomePage> {
                   child: CategoriesGrid(),
                 ),
               ),
-              
-              // Products Section Header  
+
+              // Products Section Header
               SliverToBoxAdapter(
                 child: SectionHeader(
                   icon: Ionicons.cube_outline,
@@ -174,51 +181,17 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 ),
               ),
-              
+
               // Products Grid
-              ProductsGrid(radiusKm: appState.radiusKm),
+              ProductsGrid(radiusKm: location.radiusKm),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
           ),
         ),
       ),
       backgroundColor: Colors.white,
-      // Debug floating action button to test splash screen behavior
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await SplashScreen.resetSplashBehavior();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Splash screen behavior reset. Refresh the page to test.'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        },
-        backgroundColor: Colors.orange,
-        child: const Icon(Icons.refresh, color: Colors.white),
-      ),
     );
   }
 
-  void _promptAdmin(BuildContext context, AppState appState) {
-    final code = TextEditingController();
-    showDialog(context: context, builder: (_) => AlertDialog(
-      title: const Text('Admin Login'),
-      content: SizedBox(width: 360, child: TextField(controller: code, obscureText: true, decoration: const InputDecoration(labelText: 'Access Code', border: OutlineInputBorder()))),
-      actions: [
-        TextButton(onPressed: ()=>Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: (){
-          if (code.text.trim() == 'admin123') {
-            appState.setAdmin(true);
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin mode enabled')));
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid code')));
-          }
-        }, child: const Text('Unlock')),
-      ],
-    ));
-  }
+  // legacy prompt removed
 }

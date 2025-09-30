@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
-import 'store/seller_store.dart';
-import 'models.dart';
+import '../../../app/provider_registry.dart';
 import 'widgets/kpi_card.dart';
+import 'models.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<SellerStore>(
-      builder: (context, store, child) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final store = ref.watch(sellerStoreProvider);
         return Scaffold(
           body: SafeArea(
             child: ContentClamp(
@@ -90,7 +91,7 @@ class DashboardPage extends StatelessWidget {
                           icon: Ionicons.add_circle_outline,
                           color: AppColors.primary,
                           onTap: () {
-                            // TODO: Navigate to add product
+                            // Pending: Navigate to add product
                           },
                         ),
                         _QuickActionCard(
@@ -99,7 +100,7 @@ class DashboardPage extends StatelessWidget {
                           icon: Ionicons.people_outline,
                           color: AppColors.warning,
                           onTap: () {
-                            // TODO: Navigate to leads
+                            // Pending: Navigate to leads
                           },
                         ),
                         _QuickActionCard(
@@ -108,7 +109,7 @@ class DashboardPage extends StatelessWidget {
                           icon: Ionicons.analytics_outline,
                           color: AppColors.success,
                           onTap: () {
-                            // TODO: Navigate to analytics
+                            // Pending: Navigate to analytics
                           },
                         ),
                         _QuickActionCard(
@@ -117,7 +118,7 @@ class DashboardPage extends StatelessWidget {
                           icon: Ionicons.settings_outline,
                           color: AppColors.textSecondary,
                           onTap: () {
-                            // TODO: Navigate to settings
+                            // Pending: Navigate to settings
                           },
                         ),
                       ],
@@ -198,10 +199,10 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
-class _AdsManager extends StatelessWidget {
+class _AdsManager extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SellerStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(sellerStoreProvider);
     final ads = store.ads;
     return Card(
       elevation: AppElevation.level1,
@@ -251,15 +252,19 @@ class _AdCard extends StatelessWidget {
                 style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 8),
-          Text(
-              ad.type == AdType.search
-                  ? 'Search campaign'
-                  : 'Category campaign',
-              style: t.titleSmall),
-          const Spacer(),
+          Expanded(
+            child: Text(
+                ad.type == AdType.search
+                    ? 'Search campaign'
+                    : 'Category campaign',
+                style: t.titleSmall,
+                overflow: TextOverflow.ellipsis),
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => context.read<SellerStore>().deleteAd(ad.id),
+            onPressed: () => ProviderScope.containerOf(context)
+                .read(sellerStoreProvider)
+                .deleteAd(ad.id),
           ),
         ]),
         const SizedBox(height: 6),
@@ -321,12 +326,11 @@ class _NewAdCardState extends State<_NewAdCard> {
           value: _type,
           onChanged: (v) => setState(() => _type = v ?? AdType.search),
           items: const [
-            DropdownMenuItem(
-                value: AdType.search, child: Text('Search keyword')),
-            DropdownMenuItem(
-                value: AdType.category, child: Text('Category name')),
+            DropdownMenuItem(value: AdType.search, child: Text('Search')),
+            DropdownMenuItem(value: AdType.category, child: Text('Category')),
           ],
           decoration: const InputDecoration(prefixIcon: Icon(Icons.campaign)),
+          isExpanded: true,
         ),
         const SizedBox(height: 8),
         TextField(
@@ -451,7 +455,7 @@ class _ActivityItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 20, color: color),

@@ -23,10 +23,11 @@ class BiDirectionalScroller extends StatelessWidget {
       child: inner,
     );
 
-    final bool showScrollbars = Theme.of(context).platform == TargetPlatform.macOS ||
-        Theme.of(context).platform == TargetPlatform.windows ||
-        Theme.of(context).platform == TargetPlatform.linux ||
-        Theme.of(context).platform == TargetPlatform.fuchsia;
+    final bool showScrollbars =
+        Theme.of(context).platform == TargetPlatform.macOS ||
+            Theme.of(context).platform == TargetPlatform.windows ||
+            Theme.of(context).platform == TargetPlatform.linux ||
+            Theme.of(context).platform == TargetPlatform.fuchsia;
 
     if (showScrollbars) {
       outer = Scrollbar(

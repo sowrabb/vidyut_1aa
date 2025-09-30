@@ -1,116 +1,103 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
-import '../sell/models.dart';
-import '../leads/leads_store.dart';
 import '../leads/lead_detail_page.dart';
-import '../../services/demo_data_service.dart';
-import 'store/seller_store.dart';
+import '../sell/models.dart';
+import '../../../app/provider_registry.dart';
 
-class LeadsPage extends StatelessWidget {
+class LeadsPage extends ConsumerWidget {
   const LeadsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => LeadsStore(context.read<DemoDataService>()),
-      builder: (context, _) {
-        final store = context.watch<LeadsStore>();
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          body: SafeArea(
-            child: ContentClamp(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  ResponsiveRow(children: [
-                    TextField(
-                      decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Search leads...'),
-                      onChanged: store.setQuery,
-                    ),
-                    DropdownButtonFormField<String>(
-                      value: store.region,
-                      items: const [
-                        DropdownMenuItem(
-                            value: 'All', child: Text('All States')),
-                        DropdownMenuItem(
-                            value: 'Telangana', child: Text('Telangana')),
-                        DropdownMenuItem(
-                            value: 'Karnataka', child: Text('Karnataka')),
-                        DropdownMenuItem(
-                            value: 'Maharashtra', child: Text('Maharashtra')),
-                      ],
-                      onChanged: (v) => store.setRegion(v ?? 'All'),
-                      decoration:
-                          const InputDecoration(prefixIcon: Icon(Icons.public)),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  // Chips
-                  const Text('Industry'),
-                  const SizedBox(height: 6),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
-                    for (final s in const [
-                      'Construction',
-                      'EPC',
-                      'MEP',
-                      'Solar'
-                    ])
-                      FilterChip(
-                          label: Text(s),
-                          selected: store.industries.contains(s),
-                          onSelected: (_) => store.toggleIndustry(s)),
-                  ]),
-                  const SizedBox(height: 12),
-                  const Text('Materials Used'),
-                  const SizedBox(height: 6),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
-                    for (final m in kMaterials)
-                      FilterChip(
-                          label: Text(m),
-                          selected: store.materials.contains(m),
-                          onSelected: (_) => store.toggleMaterial(m)),
-                  ]),
-                  const SizedBox(height: 12),
-                  const Text('Turnover (₹ Cr)'),
-                  RangeSlider(
-                    values: RangeValues(store.minTurnCr, store.maxTurnCr),
-                    min: 0,
-                    max: 1000,
-                    divisions: 50,
-                    labels: RangeLabels(store.minTurnCr.toStringAsFixed(0),
-                        store.maxTurnCr.toStringAsFixed(0)),
-                    onChanged: (v) => store.setTurnover(v.start, v.end),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Results - Facebook-style profile cards
-                  ResponsiveRow(
-                    desktop: 2,
-                    tablet: 2,
-                    phone: 1,
-                    children: store.results
-                        .map((l) => _LeadProfileCard(
-                            lead: l, 
-                            onOpen: () => _open(context, l),
-                            onQuote: () => _requestQuote(context, l)))
-                        .toList(),
-                  ),
-
-                  if (store.results.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Center(child: Text('No leads match filters.')),
-                    ),
-                ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(leadsProvider({'page': 1, 'pageSize': 10}));
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: ContentClamp(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              ResponsiveRow(children: [
+                TextField(
+                  decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Search leads...'),
+                  onChanged: store.setQuery,
+                ),
+                DropdownButtonFormField<String>(
+                  value: store.region,
+                  items: const [
+                    DropdownMenuItem(value: 'All', child: Text('All States')),
+                    DropdownMenuItem(
+                        value: 'Telangana', child: Text('Telangana')),
+                    DropdownMenuItem(
+                        value: 'Karnataka', child: Text('Karnataka')),
+                    DropdownMenuItem(
+                        value: 'Maharashtra', child: Text('Maharashtra')),
+                  ],
+                  onChanged: (v) => store.setRegion(v ?? 'All'),
+                  decoration:
+                      const InputDecoration(prefixIcon: Icon(Icons.public)),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              // Chips
+              const Text('Industry'),
+              const SizedBox(height: 6),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final s in const ['Construction', 'EPC', 'MEP', 'Solar'])
+                  FilterChip(
+                      label: Text(s),
+                      selected: store.industries.contains(s),
+                      onSelected: (_) => store.toggleIndustry(s)),
+              ]),
+              const SizedBox(height: 12),
+              const Text('Materials Used'),
+              const SizedBox(height: 6),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final m in kMaterials)
+                  FilterChip(
+                      label: Text(m),
+                      selected: store.materials.contains(m),
+                      onSelected: (_) => store.toggleMaterial(m)),
+              ]),
+              const SizedBox(height: 12),
+              const Text('Turnover (₹ Cr)'),
+              RangeSlider(
+                values: RangeValues(store.minTurnCr, store.maxTurnCr),
+                min: 0,
+                max: 1000,
+                divisions: 50,
+                labels: RangeLabels(store.minTurnCr.toStringAsFixed(0),
+                    store.maxTurnCr.toStringAsFixed(0)),
+                onChanged: (v) => store.setTurnover(v.start, v.end),
               ),
-            ),
+              const SizedBox(height: 12),
+
+              // Results - Facebook-style profile cards
+              ResponsiveRow(
+                desktop: 2,
+                tablet: 2,
+                phone: 1,
+                children: store.results
+                    .map((l) => _LeadProfileCard(
+                        lead: l,
+                        onOpen: () => _open(context, l),
+                        onQuote: () => _requestQuote(context, l)))
+                    .toList(),
+              ),
+
+              if (store.results.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Center(child: Text('No leads match filters.')),
+                ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -121,8 +108,11 @@ class LeadsPage extends StatelessWidget {
 
   void _requestQuote(BuildContext context, Lead lead) {
     // Record lead contact for analytics
-    final sellerStore = context.read<SellerStore>();
-    sellerStore.recordLeadContact(lead.id, 'quote_request');
+    // This page is a ConsumerWidget; use a local ProviderScope to access ref via Consumer
+    final container = ProviderScope.containerOf(context, listen: false);
+    container
+        .read(sellerStoreProvider)
+        .recordLeadContact(lead.id, 'quote_request');
 
     // Show quote request dialog
     showDialog(
@@ -138,7 +128,8 @@ class LeadsPage extends StatelessWidget {
             Text('Location: ${lead.city}, ${lead.state}'),
             Text('Turnover: ₹${lead.turnoverCr.toStringAsFixed(0)} Cr'),
             const SizedBox(height: 16),
-            const Text('Your quote request has been recorded. The lead will be notified and may contact you directly.'),
+            const Text(
+                'Your quote request has been recorded. The lead will be notified and may contact you directly.'),
           ],
         ),
         actions: [
@@ -150,7 +141,8 @@ class LeadsPage extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Quote request sent successfully!')),
+                const SnackBar(
+                    content: Text('Quote request sent successfully!')),
               );
             },
             child: const Text('Send Quote Request'),
@@ -272,7 +264,7 @@ class _LeadProfileCard extends StatelessWidget {
                       .map((m) => Chip(
                             label: Text(m),
                             backgroundColor: AppColors.primarySurface,
-                            labelStyle: TextStyle(
+                            labelStyle: const TextStyle(
                               color: AppColors.primary,
                               fontSize: 12,
                             ),

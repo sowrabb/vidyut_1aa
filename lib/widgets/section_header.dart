@@ -22,7 +22,8 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -59,7 +60,7 @@ class SectionHeader extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Action Link
           InkWell(
             onTap: onActionTap,

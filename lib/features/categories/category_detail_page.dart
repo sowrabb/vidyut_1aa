@@ -1,18 +1,41 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import '../../app/breakpoints.dart';
 import '../../app/app_state.dart';
+import '../../../app/provider_registry.dart';
 import '../search/search_store.dart';
 import '../sell/models.dart';
-import '../sell/store/seller_store.dart';
+// removed direct SellerStore import; using Riverpod provider instead
 import '../sell/product_detail_page.dart';
 import '../../widgets/responsive_product_grid.dart';
 import 'categories_page.dart' hide kMaterials;
 
-class CategoryDetailPage extends StatelessWidget {
+import '../../state/location/location_state.dart' as loc;
+
+final categorySearchStoreProvider = ChangeNotifierProvider.autoDispose
+    .family<SearchStore, String>((ref, categoryName) {
+  final sellerStore = ref.read(sellerStoreProvider);
+  final location = ref.read(locationControllerProvider);
+  final legacy = AppState();
+  legacy.setLocation(
+    city: location.city,
+    area: location.area,
+    state: location.stateName,
+    radiusKm: location.radiusKm,
+    mode: location.mode == loc.LocationMode.auto
+        ? LocationMode.auto
+        : LocationMode.manual,
+    latitude: location.latitude,
+    longitude: location.longitude,
+  );
+  final store = SearchStore(sellerStore.products, legacy);
+  store.selectedCategories.add(categoryName);
+  return store;
+});
+
+class CategoryDetailPage extends ConsumerWidget {
   final CategoryData category;
 
   const CategoryDetailPage({
@@ -21,87 +44,74 @@ class CategoryDetailPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) {
-        // Use real products from SellerStore
-        final sellerStore = context.read<SellerStore>();
-        final appState = context.read<AppState>();
-        final store = SearchStore(sellerStore.products, appState);
-
-        // Pre-select this category
-        store.selectedCategories.add(category.name);
-        
-        return store;
-      },
-      builder: (context, _) {
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          appBar: AppBar(
-            title: Text(category.name),
-            actions: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.share),
-              ),
-            ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        title: Text(category.name),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.share),
           ),
-          body: SafeArea(
-            child: ContentClamp(
-              child: LayoutBuilder(
-                builder: (context, bc) {
-                  final isDesktop = bc.maxWidth >= AppBreakpoints.desktop;
-                  return CustomScrollView(
-                    slivers: [
-                      // Category header
-                      SliverToBoxAdapter(
-                        child: _CategoryHeader(category: category),
+        ],
+      ),
+      body: SafeArea(
+        child: ContentClamp(
+          child: LayoutBuilder(
+            builder: (context, bc) {
+              final isDesktop = bc.maxWidth >= AppBreakpoints.desktop;
+              return CustomScrollView(
+                slivers: [
+                  // Category header
+                  SliverToBoxAdapter(
+                    child: _CategoryHeader(category: category),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                  // Search bar
+                  SliverToBoxAdapter(
+                      child: _SearchBar(categoryName: category.name)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                  if (isDesktop)
+                    SliverToBoxAdapter(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 280,
+                            child: _FiltersPanel(
+                                sticky: true, categoryName: category.name),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(child: _ResultsGrid(category: category)),
+                        ],
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-                      // Search bar
-                      const SliverToBoxAdapter(child: _SearchBar()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                      if (isDesktop)
-                        SliverToBoxAdapter(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 280,
-                                child: _FiltersPanel(sticky: true),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(child: _ResultsGrid(category: category)),
-                            ],
+                    )
+                  else
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _openFiltersSheet(context),
+                              icon: const Icon(Icons.tune),
+                              label: const Text('Filters'),
+                            ),
                           ),
-                        )
-                      else
-                        SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _openFiltersSheet(context),
-                                  icon: const Icon(Icons.tune),
-                                  label: const Text('Filters'),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _ResultsGrid(category: category),
-                            ],
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
+                          const SizedBox(height: 12),
+                          _ResultsGrid(category: category),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -110,36 +120,11 @@ class CategoryDetailPage extends StatelessWidget {
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
-      builder: (_) => const Padding(
+      builder: (_) => Padding(
         padding: EdgeInsets.all(16),
-        child: _FiltersPanel(),
+        child: _FiltersPanel(categoryName: category.name),
       ),
     );
-  }
-
-  List<Product> _generateDemoProductsForCategory(CategoryData category) {
-    final products = <Product>[];
-    final random = Random(42);
-
-    for (int i = 0; i < 20; i++) {
-      products.add(Product(
-        id: '${category.name}_${i + 1}',
-        title: '${category.name} Product ${i + 1}',
-        brand: i.isEven ? 'Philips' : 'Schneider',
-        category: category.name,
-        subtitle: 'Spec ${i + 1}',
-        price: 300 + i * 120.0,
-        moq: 10,
-        gstRate: 18,
-        materials: category.materials.isNotEmpty
-            ? [category.materials[i % category.materials.length]]
-            : ['General'],
-        status: i % 5 == 0 ? ProductStatus.draft : ProductStatus.active,
-        rating: (random.nextDouble() * 2) + 3, // 3..5
-      ));
-    }
-
-    return products;
   }
 }
 
@@ -220,7 +205,7 @@ class _CategoryHeader extends StatelessWidget {
                             (industry) => Chip(
                               label: Text(industry),
                               backgroundColor: AppColors.primarySurface,
-                              labelStyle: TextStyle(
+                              labelStyle: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 12,
                               ),
@@ -239,12 +224,13 @@ class _CategoryHeader extends StatelessWidget {
   }
 }
 
-class _SearchBar extends StatelessWidget {
-  const _SearchBar();
+class _SearchBar extends ConsumerWidget {
+  final String categoryName;
+  const _SearchBar({required this.categoryName});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.read<SearchStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.read(categorySearchStoreProvider(categoryName));
     return ResponsiveRow(
       children: [
         TextField(
@@ -255,7 +241,7 @@ class _SearchBar extends StatelessWidget {
           onChanged: store.setQuery,
         ),
         DropdownButtonFormField<SortBy>(
-          value: context.watch<SearchStore>().sortBy,
+          value: ref.watch(categorySearchStoreProvider(categoryName)).sortBy,
           items: const [
             DropdownMenuItem(value: SortBy.relevance, child: Text('Relevance')),
             DropdownMenuItem(
@@ -273,13 +259,14 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _FiltersPanel extends StatelessWidget {
+class _FiltersPanel extends ConsumerWidget {
   final bool sticky;
-  const _FiltersPanel({this.sticky = false});
+  final String categoryName;
+  const _FiltersPanel({this.sticky = false, required this.categoryName});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SearchStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(categorySearchStoreProvider(categoryName));
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,14 +319,14 @@ class _FiltersPanel extends StatelessWidget {
   }
 }
 
-class _ResultsGrid extends StatelessWidget {
+class _ResultsGrid extends ConsumerWidget {
   final CategoryData category;
-  
+
   const _ResultsGrid({required this.category});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SearchStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(categorySearchStoreProvider(category.name));
 
     // Convert to ProductCardData
     final productCards = store.results.map((product) {
@@ -361,16 +348,18 @@ class _ResultsGrid extends StatelessWidget {
           );
         },
         onCallPressed: () {
-          context.read<SellerStore>().recordProductContactCall(product.id);
+          ref.read(sellerStoreProvider).recordProductContactCall(product.id);
         },
         onWhatsAppPressed: () {
-          context.read<SellerStore>().recordProductContactWhatsapp(product.id);
+          ref
+              .read(sellerStoreProvider)
+              .recordProductContactWhatsapp(product.id);
         },
       );
     }).toList();
 
     // Get ads for this category
-    final sellerStore = context.read<SellerStore>();
+    final sellerStore = ref.read(sellerStoreProvider);
     final relevantAds = sellerStore.ads.where((ad) {
       if (ad.type == AdType.category) {
         return ad.term.toLowerCase() == category.name.toLowerCase();
@@ -386,9 +375,9 @@ class _ResultsGrid extends StatelessWidget {
           Text(
             'Sponsored Results',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
           ),
           const SizedBox(height: 8),
           ...relevantAds.map((ad) => _AdResultCard(ad: ad)),
@@ -396,9 +385,9 @@ class _ResultsGrid extends StatelessWidget {
           Text(
             'Regular Results',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
           ),
           const SizedBox(height: 8),
         ],
@@ -414,7 +403,7 @@ class _ResultsGrid extends StatelessWidget {
 
 class _AdResultCard extends StatelessWidget {
   final AdCampaign ad;
-  
+
   const _AdResultCard({required this.ad});
 
   @override
@@ -424,7 +413,7 @@ class _AdResultCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -432,8 +421,8 @@ class _AdResultCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              AppColors.primary.withOpacity(0.05),
-              AppColors.primary.withOpacity(0.02),
+              AppColors.primary.withValues(alpha: 0.05),
+              AppColors.primary.withValues(alpha: 0.02),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -476,7 +465,7 @@ class _AdResultCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
               size: 16,
               color: AppColors.textSecondary,

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/tokens.dart';
 import '../../app/layout/adaptive.dart';
-import 'store/seller_store.dart';
-import 'models.dart';
+import '../../../app/provider_registry.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../features/admin/store/admin_store.dart';
 import 'ads_create_page.dart';
+import '../../widgets/product_picker.dart';
+import 'models.dart';
 
-class AdsPage extends StatelessWidget {
+class AdsPage extends ConsumerWidget {
   const AdsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SellerStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(sellerStoreProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Ads')),
       floatingActionButton: FloatingActionButton.extended(
@@ -48,27 +48,28 @@ class AdsPage extends StatelessWidget {
         icon: const Icon(Icons.add),
         label: const Text('New Ad'),
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: ContentClamp(
-          padding: const EdgeInsets.all(24),
-          child: const _AdsManager(),
+          padding: EdgeInsets.all(24),
+          child: _AdsManager(),
         ),
       ),
     );
   }
 }
 
-class _AdsManager extends StatelessWidget {
+class _AdsManager extends ConsumerWidget {
   const _AdsManager();
   @override
-  Widget build(BuildContext context) {
-    final store = context.watch<SellerStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(sellerStoreProvider);
     final ads = store.ads;
     return LayoutBuilder(builder: (context, bc) {
       final isPhone = bc.maxWidth < AppBreaks.tablet;
       final children = [for (final ad in ads) _AdCard(ad: ad)];
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Create up to ${store.maxAds} campaigns (${store.ads.length}/${store.maxAds} used)',
+        Text(
+            'Create up to ${store.maxAds} campaigns (${store.ads.length}/${store.maxAds} used)',
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         if (isPhone)
@@ -90,11 +91,11 @@ class _AdsManager extends StatelessWidget {
   }
 }
 
-class _AdCard extends StatelessWidget {
+class _AdCard extends ConsumerWidget {
   final AdCampaign ad;
   const _AdCard({required this.ad});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
     return Container(
       width: double.infinity,
@@ -117,16 +118,89 @@ class _AdCard extends StatelessWidget {
           Text(
               ad.type == AdType.search
                   ? 'Search campaign'
-                  : 'Category campaign',
+                  : ad.type == AdType.category
+                      ? 'Category campaign'
+                      : 'Product campaign',
               style: t.titleSmall),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => context.read<SellerStore>().deleteAd(ad.id),
+            onPressed: () => ProviderScope.containerOf(context)
+                .read(sellerStoreProvider)
+                .deleteAd(ad.id),
           ),
         ]),
         const SizedBox(height: 6),
-        Text('Target: ${ad.term}'),
+        if (ad.type == AdType.product)
+          Row(children: [
+            const Icon(Icons.inventory_2_outlined, size: 16),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                ad.productTitle ?? ad.productId ?? '-',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Change selected product?'),
+                    content: const Text(
+                        'Replacing the product will update this campaign. Continue?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Change')),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                final selected = await showDialog<Product>(
+                  context: context,
+                  builder: (ctx) => Dialog(
+                    child: SizedBox(
+                      width: 720,
+                      height: 520,
+                      child: ProductPicker(
+                        onSelected: (p) => Navigator.of(ctx).pop(p),
+                      ),
+                    ),
+                  ),
+                );
+                if (selected != null) {
+                  ProviderScope.containerOf(context)
+                      .read(sellerStoreProvider)
+                      .upsertAd(ad.copyWith(
+                        term: selected.id,
+                        productId: selected.id,
+                        productTitle: selected.title,
+                        productThumbnail: selected.images.isNotEmpty
+                            ? selected.images.first
+                            : null,
+                      ));
+                }
+              },
+              child: const Text('Change'),
+            ),
+            TextButton(
+              onPressed: () {
+                ProviderScope.containerOf(context)
+                    .read(sellerStoreProvider)
+                    .upsertAd(ad.copyWith(
+                        productId: null,
+                        productTitle: null,
+                        productThumbnail: null));
+              },
+              child: const Text('Clear'),
+            )
+          ])
+        else
+          Text('Target: ${ad.term}'),
         const SizedBox(height: 6),
         Text('Requested slot: #${ad.slot} (Top 5, first-come-first-serve)',
             style: t.bodySmall?.copyWith(color: AppColors.textSecondary)),
@@ -135,19 +209,20 @@ class _AdCard extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: OutlinedButton.icon(
             onPressed: () async {
-              final admin = context.read<AdminStore>();
+              final admin = ref.read(adminStoreProvider);
+              final sellerStore = ref.read(sellerStoreProvider);
+              final messenger = ScaffoldMessenger.of(context);
               final phone = (admin.adsPriorityPhone.isNotEmpty)
                   ? admin.adsPriorityPhone
                   : '+91-9876543210';
               final uri = Uri(scheme: 'tel', path: phone.replaceAll(' ', ''));
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri);
-                // Optionally record analytics in SellerStore
-                // ignore: use_build_context_synchronously
-                context.read<SellerStore>().recordSellerContactCall();
+                sellerStore.recordSellerContactCall();
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Calling not supported on this device')),
+                messenger.showSnackBar(
+                  const SnackBar(
+                      content: Text('Calling not supported on this device')),
                 );
               }
             },

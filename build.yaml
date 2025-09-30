@@ -1,0 +1,15 @@
+targets:
+  $default:
+    builders:
+      # Enable tree shaking for smaller builds
+      build_web_compilers:web:
+        options:
+          dart2js_args:
+            - --minify
+            - --no-source-maps
+            - --tree-shake-icons
+            - --no-source-maps
+      # Optimize for size
+      build_runner:
+        options:
+          delete_conflicting_outputs: true

@@ -2,29 +2,29 @@ import 'package:flutter/material.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/layout/app_shell_scaffold.dart';
 import '../../app/tokens.dart';
-import '../../app/app_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/provider_registry.dart';
 import '../../app/geo.dart';
-import 'package:provider/provider.dart';
 import '../sell/models.dart';
 import '../home/widgets/product_card.dart';
+import '../../widgets/product_image_gallery.dart';
+import '../reviews/product_reviews_card.dart';
 import 'seller_page.dart';
 import 'package:ionicons/ionicons.dart';
-import 'store/seller_store.dart';
 import '../search/search_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../widgets/optimized_image_widget.dart';
 
-class ProductDetailPage extends StatelessWidget {
+class ProductDetailPage extends ConsumerWidget {
   final Product product;
   const ProductDetailPage({super.key, required this.product});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
     // Record a view when this page builds (simple demo; could be guarded to once)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (context.mounted) {
-        context.read<SellerStore>().recordProductView(product.id);
+        ref.read(sellerStoreProvider).recordProductView(product.id);
       }
     });
 
@@ -39,7 +39,9 @@ class ProductDetailPage extends StatelessWidget {
               // Gallery + Meta  (2-col desktop / 1-col mobile)
               ResponsiveRow(desktop: 2, tablet: 2, phone: 1, children: [
                 // Gallery
-                _Gallery(images: product.images),
+                ProductImageGallery(
+                    imageUrls: product.images,
+                    heroPrefix: 'product_${product.id}'),
                 // Meta
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +52,9 @@ class ProductDetailPage extends StatelessWidget {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () {
-                            context.read<SellerStore>().recordProductContactCall(product.id);
+                            ref
+                                .read(sellerStoreProvider)
+                                .recordProductContactCall(product.id);
                           },
                           icon: const Icon(Icons.call),
                           label: const Text('Contact Supplier'),
@@ -60,7 +64,9 @@ class ProductDetailPage extends StatelessWidget {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () {
-                            context.read<SellerStore>().recordProductContactWhatsapp(product.id);
+                            ref
+                                .read(sellerStoreProvider)
+                                .recordProductContactWhatsapp(product.id);
                           },
                           icon: const Icon(Ionicons.logo_whatsapp),
                           label: const Text('WhatsApp'),
@@ -103,10 +109,8 @@ class ProductDetailPage extends StatelessWidget {
               _RelatedStrip(anchor: product),
               const SizedBox(height: 24),
 
-              // Reviews placeholder
-              Text('Reviews', style: t.titleLarge),
-              const SizedBox(height: 8),
-              const Text('TODO: Show reviews here'),
+              // Reviews
+              ProductReviewsCard(product: product),
             ],
           ),
         ),
@@ -115,48 +119,7 @@ class ProductDetailPage extends StatelessWidget {
   }
 }
 
-class _Gallery extends StatelessWidget {
-  final List<String> images;
-  const _Gallery({required this.images});
-
-  @override
-  Widget build(BuildContext context) {
-    final pics = images.isEmpty
-        ? List<String>.generate(
-            4, (i) => 'https://picsum.photos/seed/detail_$i/1200/800')
-        : images;
-    return Column(
-      children: [
-        AspectRatio(
-          aspectRatio: 4 / 3,
-          child: ProductImageWidget(
-            imageUrl: pics.first,
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 72,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: pics.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) => ProductImageWidget(
-              imageUrl: pics[i],
-              width: 96,
-              height: 72,
-              fit: BoxFit.cover,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+// (old _Gallery removed; replaced by ProductImageGallery)
 
 class _SpecTable extends StatelessWidget {
   final Product product;
@@ -240,19 +203,19 @@ class _TitleBlock extends StatelessWidget {
   }
 }
 
-class _SellerMiniCard extends StatelessWidget {
+class _SellerMiniCard extends ConsumerWidget {
   final Product product;
   const _SellerMiniCard({required this.product});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
-    final appState = context.read<AppState>();
-    final buyerLat = appState.latitude;
-    final buyerLng = appState.longitude;
+    final location = ref.read(locationControllerProvider);
+    final buyerLat = location.latitude;
+    final buyerLng = location.longitude;
     double? distKm;
     if (buyerLat != null && buyerLng != null) {
-      final baseLat = 17.3850;
-      final baseLng = 78.4867;
+      const baseLat = 17.3850;
+      const baseLng = 78.4867;
       final delta = (product.brand.hashCode % 1000) / 10000.0;
       final sLat = baseLat + delta;
       final sLng = baseLng + delta;
@@ -297,7 +260,7 @@ class _SellerMiniCard extends StatelessWidget {
                 avatar: const Icon(Icons.check_circle,
                     color: Colors.green, size: 16),
               ),
-              Chip(label: const Text('4.5 ★ (127 reviews)')),
+              const Chip(label: Text('4.5 ★ (127 reviews)')),
               if (distKm != null)
                 Chip(label: Text('${distKm.toStringAsFixed(1)} km away')),
             ]),
@@ -311,8 +274,8 @@ class _SellerMiniCard extends StatelessWidget {
               IconButton(
                 tooltip: 'View on map',
                 onPressed: () {
-                  final baseLat = 17.3850;
-                  final baseLng = 78.4867;
+                  const baseLat = 17.3850;
+                  const baseLng = 78.4867;
                   final delta = (product.brand.hashCode % 1000) / 10000.0;
                   final sLat = baseLat + delta;
                   final sLng = baseLng + delta;

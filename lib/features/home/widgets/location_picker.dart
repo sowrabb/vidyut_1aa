@@ -252,7 +252,8 @@ class _LocationPickerState extends State<LocationPicker> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Location services are disabled. Please enable them in settings.'),
+              content: Text(
+                  'Location services are disabled. Please enable them in settings.'),
             ),
           );
         }
@@ -267,7 +268,8 @@ class _LocationPickerState extends State<LocationPicker> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Location permissions are denied. Please grant permission to use auto-location.'),
+                content: Text(
+                    'Location permissions are denied. Please grant permission to use auto-location.'),
               ),
             );
           }
@@ -279,7 +281,8 @@ class _LocationPickerState extends State<LocationPicker> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Location permissions are permanently denied. Please enable them in app settings.'),
+              content: Text(
+                  'Location permissions are permanently denied. Please enable them in app settings.'),
             ),
           );
         }
