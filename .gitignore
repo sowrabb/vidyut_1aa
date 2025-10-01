@@ -43,3 +43,29 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Test and coverage reports
+coverage/
+*.coverage
+test_results/
+*_test_report*.json
+*_test_report*.md
+
+# Build artifacts and temporary files
+*.tar.gz
+*.zip
+y/
+
+# Documentation and report files (use docs/ for actual documentation)
+*_COMPLETE.md
+*_REPORT.md
+*_SUCCESS.md
+*_VERIFICATION.md
+*_SUMMARY.md
+*_STATUS.md
+*_FIXED.md
+*_APPLIED.md
+*_CERTIFICATION.md
+PHASE_*.md
+READY_TO_SHIP.md
+SHIP_IT_NOW.md
