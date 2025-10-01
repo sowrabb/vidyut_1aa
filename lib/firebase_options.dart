@@ -59,21 +59,21 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAuFr481cjL2WHsbsMeleXjKUyOAEyoUcg',
-    appId: '1:940313957771:ios:your-ios-app-id',
+    apiKey: 'AIzaSyB6Lu3_M9dsnd69nNZiXAB_7OczcerYe34',
+    appId: '1:940313957771:ios:2b9f790bff58a4fe8a0b8e',
     messagingSenderId: '940313957771',
     projectId: 'vidyutnidhi5',
     storageBucket: 'vidyutnidhi5.firebasestorage.app',
-    iosBundleId: 'com.example.vidyut',
+    iosBundleId: 'com.vidyut.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAuFr481cjL2WHsbsMeleXjKUyOAEyoUcg',
-    appId: '1:940313957771:ios:your-macos-app-id',
+    apiKey: 'AIzaSyB6Lu3_M9dsnd69nNZiXAB_7OczcerYe34',
+    appId: '1:940313957771:ios:2b9f790bff58a4fe8a0b8e',
     messagingSenderId: '940313957771',
     projectId: 'vidyutnidhi5',
     storageBucket: 'vidyutnidhi5.firebasestorage.app',
-    iosBundleId: 'com.example.vidyut',
+    iosBundleId: 'com.vidyut.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
