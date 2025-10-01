@@ -34,16 +34,21 @@ class _PhoneSignupPageState extends ConsumerState<PhoneSignupPage> {
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final authService = ref.read(phoneAuthServiceProvider);
-    final success = await authService.signUpWithPhonePassword(
-      phoneNumber: _phoneController.text,
+    final controller = ref.read(authControllerProvider.notifier);
+    final email = _emailController.text.isNotEmpty
+        ? _emailController.text.trim()
+        : '${_phoneController.text.trim()}@phone.local';
+
+    await controller.signUpWithEmailPassword(
+      email: email,
       password: _passwordController.text,
-      name: _nameController.text,
-      email: _emailController.text.isNotEmpty ? _emailController.text : null,
+      name: _nameController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
     );
 
-    if (success && mounted) {
-      // Navigate to main app
+    if (!mounted) return;
+    final state = ref.read(authControllerProvider);
+    if (state.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/');
     }
   }
@@ -54,7 +59,7 @@ class _PhoneSignupPageState extends ConsumerState<PhoneSignupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = ref.watch(phoneAuthServiceProvider);
+    final authState = ref.watch(authControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -79,7 +84,7 @@ class _PhoneSignupPageState extends ConsumerState<PhoneSignupPage> {
               const SizedBox(height: 32),
 
               // Error Display
-              if (authService.error != null)
+              if (authState.message != null)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -95,7 +100,7 @@ class _PhoneSignupPageState extends ConsumerState<PhoneSignupPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          authService.error!,
+                          authState.message!,
                           style: TextStyle(color: Colors.red.shade700),
                         ),
                       ),
@@ -284,8 +289,8 @@ class _PhoneSignupPageState extends ConsumerState<PhoneSignupPage> {
                           height: 56,
                           child: FilledButton(
                             onPressed:
-                                authService.isLoading ? null : _handleSignup,
-                            child: authService.isLoading
+                                authState.isLoading ? null : _handleSignup,
+                            child: authState.isLoading
                                 ? const SizedBox(
                                     width: 24,
                                     height: 24,

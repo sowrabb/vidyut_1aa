@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import '../../app/breakpoints.dart';
-import '../../app/app_state.dart';
+import '../../app/app_state.dart' as app_state;
 import '../../../app/provider_registry.dart';
 import '../search/search_store.dart';
 import '../sell/models.dart';
@@ -18,15 +18,15 @@ final categorySearchStoreProvider = ChangeNotifierProvider.autoDispose
     .family<SearchStore, String>((ref, categoryName) {
   final sellerStore = ref.read(sellerStoreProvider);
   final location = ref.read(locationControllerProvider);
-  final legacy = AppState();
+  final legacy = app_state.AppState();
   legacy.setLocation(
     city: location.city,
     area: location.area,
     state: location.stateName,
     radiusKm: location.radiusKm,
     mode: location.mode == loc.LocationMode.auto
-        ? LocationMode.auto
-        : LocationMode.manual,
+        ? app_state.LocationMode.auto
+        : app_state.LocationMode.manual,
     latitude: location.latitude,
     longitude: location.longitude,
   );

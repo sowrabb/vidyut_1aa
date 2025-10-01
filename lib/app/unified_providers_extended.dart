@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../features/admin/models/hero_section.dart';
 import '../features/admin/models/billing_models.dart';
 import '../features/admin/models/notification.dart' as admin_notif;
+import '../features/reviews/models.dart' show ReviewListQuery, ReviewSort;
 
 // Service imports
 import '../services/user_role_service.dart';
@@ -18,6 +19,7 @@ import '../services/simple_phone_auth_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/search_service.dart';
 import '../services/location_service.dart';
+import '../services/reviews_repository.dart';
 
 // Store imports
 import '../features/profile/store/user_store.dart';
@@ -66,54 +68,51 @@ final reviewsProvider =
 class ReviewsStore extends FamilyAsyncNotifier<ReviewsList, String> {
   @override
   Future<ReviewsList> build(String productId) async {
+    // Listen to ReviewsRepository to auto-refresh when reviews change
+    final reviewsRepository = ref.watch(reviewsRepositoryProvider);
+    
     return _loadReviews(productId);
   }
 
   Future<ReviewsList> _loadReviews(String productId) async {
-    final demoDataService = ref.read(lightweightDemoDataServiceProvider);
-    final allProducts = demoDataService.allProducts;
-
-    final product = allProducts.where((p) => p.id == productId).firstOrNull;
-    if (product == null) {
-      throw Exception('Product not found: $productId');
-    }
-
-    // For demo purposes, generate some mock reviews
-    final reviews = <Review>[];
-    final ratingDistribution = <int, int>{};
-    double totalRating = 0;
-
-    for (int i = 1; i <= 5; i++) {
-      ratingDistribution[i] = 0;
-    }
-
-    // Generate mock reviews
-    for (int i = 0; i < 10; i++) {
-      final rating = (i % 5) + 1;
-      final review = Review(
-        id: 'review_${productId}_$i',
-        productId: productId,
-        userId: 'user_$i',
-        authorDisplay: 'User $i',
-        rating: rating,
-        body: 'This is a great product! Highly recommended.',
-        createdAt: DateTime.now().subtract(Duration(days: i)),
-        images: [],
+    final reviewsRepository = ref.read(reviewsRepositoryProvider);
+    
+    // Get the summary which includes rating distribution
+    final summary = reviewsRepository.getSummary(productId);
+    
+    // Get the actual reviews list with default query
+    final reviews = reviewsRepository.listReviews(
+      productId,
+      query: const ReviewListQuery(
+        page: 1,
+        pageSize: 50, // Get more reviews for the list
+        starFilters: {},
+        withPhotosOnly: false,
+        sort: ReviewSort.mostRecent,
+      ),
+    );
+    
+    // Convert features/reviews/models.dart Review to app/review_models.dart Review
+    final convertedReviews = reviews.map((r) {
+      return Review(
+        id: r.id,
+        productId: r.productId,
+        userId: r.userId,
+        authorDisplay: r.authorDisplay,
+        rating: r.rating,
+        title: r.title,
+        body: r.body,
+        images: r.images.map((img) => ReviewImage(url: img.url)).toList(),
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
       );
-
-      reviews.add(review);
-      ratingDistribution[rating] = (ratingDistribution[rating] ?? 0) + 1;
-      totalRating += rating;
-    }
-
-    final averageRating =
-        reviews.isNotEmpty ? totalRating / reviews.length : 0.0;
+    }).toList();
 
     return ReviewsList(
-      reviews: reviews,
-      averageRating: averageRating,
-      totalCount: reviews.length,
-      ratingDistribution: ratingDistribution,
+      reviews: convertedReviews,
+      averageRating: summary.average,
+      totalCount: summary.totalCount,
+      ratingDistribution: summary.countsByStar,
     );
   }
 }

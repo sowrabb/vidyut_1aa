@@ -1,5 +1,114 @@
 import 'package:flutter/foundation.dart';
 
+/// KYC Submission Model (simplified for providers)
+class KycSubmission {
+  final String id;
+  final String userId;
+  final String userName;
+  final String userEmail;
+  final String businessName; // Company/business name
+  final String status; // 'pending', 'approved', 'rejected'
+  final DateTime createdAt;
+  final DateTime? reviewedAt;
+  final String? reviewerId;
+  final String? reviewedBy; // Reviewer name
+  final String? reviewComments;
+  final String? notes; // Additional notes
+  final List<Map<String, dynamic>> documents;
+  final Map<String, dynamic>? metadata;
+
+  KycSubmission({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.userEmail,
+    this.businessName = '',
+    required this.status,
+    required this.createdAt,
+    this.reviewedAt,
+    this.reviewerId,
+    this.reviewedBy,
+    this.reviewComments,
+    this.notes,
+    this.documents = const [],
+    this.metadata,
+  });
+
+  factory KycSubmission.fromJson(Map<String, dynamic> json) => KycSubmission(
+    id: json['id'] as String,
+    userId: json['user_id'] as String? ?? json['userId'] as String? ?? '',
+    userName: json['user_name'] as String? ?? json['userName'] as String? ?? '',
+    userEmail: json['user_email'] as String? ?? json['userEmail'] as String? ?? '',
+    businessName: json['business_name'] as String? ?? json['businessName'] as String? ?? '',
+    status: json['status'] as String? ?? 'pending',
+    createdAt: json['created_at'] != null
+        ? DateTime.parse(json['created_at'] as String)
+        : json['createdAt'] != null
+            ? DateTime.parse(json['createdAt'] as String)
+            : DateTime.now(),
+    reviewedAt: json['reviewed_at'] != null
+        ? DateTime.parse(json['reviewed_at'] as String)
+        : json['reviewedAt'] != null
+            ? DateTime.parse(json['reviewedAt'] as String)
+            : null,
+    reviewerId: json['reviewer_id'] as String? ?? json['reviewerId'] as String?,
+    reviewedBy: json['reviewed_by'] as String? ?? json['reviewedBy'] as String?,
+    reviewComments: json['review_comments'] as String? ?? json['reviewComments'] as String?,
+    notes: json['notes'] as String?,
+    documents: List<Map<String, dynamic>>.from(json['documents'] ?? []),
+    metadata: json['metadata'] as Map<String, dynamic>?,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'user_id': userId,
+    'user_name': userName,
+    'user_email': userEmail,
+    'business_name': businessName,
+    'status': status,
+    'created_at': createdAt.toIso8601String(),
+    if (reviewedAt != null) 'reviewed_at': reviewedAt!.toIso8601String(),
+    if (reviewerId != null) 'reviewer_id': reviewerId,
+    if (reviewedBy != null) 'reviewed_by': reviewedBy,
+    if (reviewComments != null) 'review_comments': reviewComments,
+    if (notes != null) 'notes': notes,
+    'documents': documents,
+    if (metadata != null) 'metadata': metadata,
+  };
+
+  KycSubmission copyWith({
+    String? id,
+    String? userId,
+    String? userName,
+    String? userEmail,
+    String? businessName,
+    String? status,
+    DateTime? createdAt,
+    DateTime? reviewedAt,
+    String? reviewerId,
+    String? reviewedBy,
+    String? reviewComments,
+    String? notes,
+    List<Map<String, dynamic>>? documents,
+    Map<String, dynamic>? metadata,
+  }) => KycSubmission(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    userName: userName ?? this.userName,
+    userEmail: userEmail ?? this.userEmail,
+    businessName: businessName ?? this.businessName,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    reviewedAt: reviewedAt ?? this.reviewedAt,
+    reviewerId: reviewerId ?? this.reviewerId,
+    reviewedBy: reviewedBy ?? this.reviewedBy,
+    reviewComments: reviewComments ?? this.reviewComments,
+    notes: notes ?? this.notes,
+    documents: documents ?? this.documents,
+    metadata: metadata ?? this.metadata,
+  );
+}
+
 /// KYC Document Types
 enum KycDocumentType {
   panCard('pan_card', 'PAN Card'),

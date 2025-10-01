@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../app/tokens.dart';
 import '../../../app/provider_registry.dart';
-import '../../services/phone_auth_service.dart';
 import 'firebase_auth_page.dart';
 
 class PhoneLoginPage extends ConsumerStatefulWidget {
@@ -28,23 +27,18 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final authService = ref.read(phoneAuthServiceProvider);
-    final success = await authService.loginWithPhonePassword(
-      _phoneController.text,
-      _passwordController.text,
+    final syntheticEmail = '${_phoneController.text}@phone.local';
+    await ref.read(authControllerProvider.notifier).signInWithEmailPassword(
+      email: syntheticEmail,
+      password: _passwordController.text,
     );
-
-    if (success && mounted) {
-      // Navigate to main app
+    if (mounted) {
       Navigator.of(context).pushReplacementNamed('/');
     }
   }
 
   Future<void> _continueAsGuest() async {
-    final authService = ref.read(phoneAuthServiceProvider);
-    await authService.continueAsGuest();
-
+    await ref.read(authControllerProvider.notifier).signInAsGuest();
     if (mounted) {
       Navigator.of(context).pushReplacementNamed('/');
     }
@@ -56,7 +50,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = ref.watch(phoneAuthServiceProvider);
+    final authState = ref.watch(authControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -73,7 +67,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
               const SizedBox(height: 40),
 
               // Error Display
-              if (authService.error != null)
+              if (authState.message != null)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -89,7 +83,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          authService.error!,
+                          authState.message!,
                           style: TextStyle(color: Colors.red.shade700),
                         ),
                       ),
@@ -194,8 +188,8 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
                           height: 56,
                           child: FilledButton(
                             onPressed:
-                                authService.isLoading ? null : _handleLogin,
-                            child: authService.isLoading
+                                authState.isLoading ? null : _handleLogin,
+                            child: authState.isLoading
                                 ? const SizedBox(
                                     width: 24,
                                     height: 24,
@@ -246,7 +240,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
 
               // Continue as Guest Button
               const SizedBox(height: 20),
-              _buildGuestButton(authService),
+              _buildGuestButton(authState),
             ],
           ),
         ),
@@ -290,7 +284,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
     );
   }
 
-  Widget _buildGuestButton(PhoneAuthService authService) {
+  Widget _buildGuestButton(AuthState authService) {
     return SizedBox(
       width: double.infinity,
       height: 56,

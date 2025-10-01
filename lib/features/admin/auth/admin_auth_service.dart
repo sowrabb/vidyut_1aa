@@ -5,6 +5,7 @@ import '../../admin/store/enhanced_admin_store.dart';
 import '../rbac/rbac_service.dart';
 import '../../../services/lightweight_demo_data_service.dart';
 import '../models/admin_user.dart';
+import '../../auth/models/user_role_models.dart';
 
 class AdminIdentity {
   final String userId;

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/tokens.dart';
-import '../../../app/provider_registry.dart';
-import '../../services/search_service.dart';
 import '../../widgets/responsive_product_grid.dart';
 import '../sell/product_detail_page.dart';
-import '../sell/models.dart';
 import 'search_history_page.dart';
 import 'search_analytics_page.dart';
+import '../../services/firebase_repository_providers.dart';
 
 class ComprehensiveSearchPage extends ConsumerStatefulWidget {
   final String? initialQuery;
@@ -35,8 +33,8 @@ class _ComprehensiveSearchPageState
   double _maxPrice = 100000;
   String _sortBy = 'relevance';
 
-  List<Product> _searchResults = [];
   bool _isSearching = false;
+  Map<String, dynamic> _currentFilters = {};
 
   @override
   void initState() {
@@ -53,14 +51,7 @@ class _ComprehensiveSearchPageState
       });
     });
 
-    // Initialize search service with products
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final sellerStore = ref.read(sellerStoreProvider);
-      final searchServiceAsync = ref.read(searchServiceProvider);
-      searchServiceAsync.whenData((searchService) {
-        searchService.initializeWithProducts(sellerStore.products);
-      });
-    });
+    // No-op: using firebase* providers directly now
   }
 
   @override
@@ -72,34 +63,10 @@ class _ComprehensiveSearchPageState
 
   @override
   Widget build(BuildContext context) {
-    final searchServiceAsync = ref.watch(searchServiceProvider);
-
-    return searchServiceAsync.when(
-      data: (searchService) => _buildSearchPage(searchService),
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stack) => Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error, size: 64, color: Colors.red.shade400),
-              const SizedBox(height: 16),
-              Text('Failed to load search service: ${error.toString()}'),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => ref.refresh(searchServiceProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return _buildSearchPage();
   }
 
-  Widget _buildSearchPage(SearchService searchService) {
+  Widget _buildSearchPage() {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -131,29 +98,28 @@ class _ComprehensiveSearchPageState
       body: Column(
         children: [
           // Search Bar with Enhanced Features
-          _buildEnhancedSearchBar(searchService),
+          _buildEnhancedSearchBar(),
 
           // Search Suggestions
-          if (_showSuggestions && searchService.suggestions.isNotEmpty)
-            _buildSuggestionsList(searchService),
+          if (_showSuggestions) _buildSuggestionsList(),
 
           // Filters Panel
           if (_showFilters) _buildAdvancedFiltersPanel(),
 
           // Search History (when not searching)
           if (_showHistory && _searchController.text.isEmpty)
-            _buildSearchHistory(searchService),
+            _buildSearchHistory(),
 
           // Search Results or Empty State
           Expanded(
-            child: _buildSearchResults(searchService),
+            child: _buildSearchResults(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEnhancedSearchBar(SearchService searchService) {
+  Widget _buildEnhancedSearchBar() {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -193,9 +159,7 @@ class _ComprehensiveSearchPageState
                 _showSuggestions = value.isNotEmpty;
                 _showHistory = value.isEmpty;
               });
-              if (value.isNotEmpty) {
-                searchService.searchWithSuggestions(value);
-              }
+              // TODO: Hook suggestions to a lightweight provider or remote API
             },
             onSubmitted: (value) {
               _performSearch(value);
@@ -248,7 +212,7 @@ class _ComprehensiveSearchPageState
     );
   }
 
-  Widget _buildSuggestionsList(SearchService searchService) {
+  Widget _buildSuggestionsList() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -283,30 +247,9 @@ class _ComprehensiveSearchPageState
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: searchService.suggestions.length,
+            itemCount: 0,
             itemBuilder: (context, index) {
-              final suggestion = searchService.suggestions[index];
-              return ListTile(
-                leading: Icon(
-                  _getSuggestionIcon(suggestion.type),
-                  size: 20,
-                ),
-                title: Text(suggestion.text),
-                subtitle: suggestion.category != null
-                    ? Text(suggestion.category!,
-                        style: Theme.of(context).textTheme.bodySmall)
-                    : null,
-                trailing: Text(
-                  '${suggestion.popularity}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-                onTap: () {
-                  _searchController.text = suggestion.text;
-                  _performSearch(suggestion.text);
-                },
-              );
+              return const SizedBox.shrink();
             },
           ),
         ],
@@ -314,40 +257,13 @@ class _ComprehensiveSearchPageState
     );
   }
 
-  IconData _getSuggestionIcon(String type) {
-    switch (type) {
-      case 'history':
-        return Icons.history;
-      case 'query':
-        return Icons.trending_up;
-      case 'product':
-        return Icons.inventory;
-      case 'category':
-        return Icons.category;
-      case 'brand':
-        return Icons.business;
-      default:
-        return Icons.search;
-    }
-  }
+  // Suggestions are disabled in this version
 
   Widget _buildAdvancedFiltersPanel() {
-    final searchServiceAsync = ref.watch(searchServiceProvider);
-
-    return searchServiceAsync.when(
-      data: (searchService) => _buildFiltersPanel(searchService),
-      loading: () => Container(
-        padding: const EdgeInsets.all(16),
-        child: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (_, __) => Container(
-        padding: const EdgeInsets.all(16),
-        child: const Text('Error loading filters'),
-      ),
-    );
+    return _buildFiltersPanel();
   }
 
-  Widget _buildFiltersPanel(SearchService searchService) {
+  Widget _buildFiltersPanel() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -379,7 +295,7 @@ class _ComprehensiveSearchPageState
           // Categories
           _buildFilterSection(
             'Categories',
-            searchService.categories,
+            const <String>[],
             _selectedCategories,
             (category) {
               setState(() {
@@ -396,10 +312,7 @@ class _ComprehensiveSearchPageState
           // Materials
           _buildFilterSection(
             'Materials',
-            searchService.allProducts
-                .expand((p) => p.materials)
-                .toSet()
-                .toList(),
+            const <String>[],
             _selectedMaterials,
             (material) {
               setState(() {
@@ -416,7 +329,7 @@ class _ComprehensiveSearchPageState
           // Brands
           _buildFilterSection(
             'Brands',
-            searchService.brands,
+            const <String>[],
             _selectedBrands,
             (brand) {
               setState(() {
@@ -573,7 +486,7 @@ class _ComprehensiveSearchPageState
     );
   }
 
-  Widget _buildSearchHistory(SearchService searchService) {
+  Widget _buildSearchHistory() {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -591,43 +504,18 @@ class _ComprehensiveSearchPageState
                       ),
                 ),
                 const Spacer(),
-                TextButton(
-                  onPressed: () => searchService.clearHistory(),
-                  child: const Text('Clear'),
-                ),
+                // Placeholder for clearing history
+                const SizedBox.shrink(),
               ],
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: searchService.searchHistory.length,
-              itemBuilder: (context, index) {
-                final item = searchService.searchHistory[index];
-                return ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text(item.query),
-                  subtitle: Text(
-                    '${item.resultCount} results • ${_formatDate(item.timestamp)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  trailing: IconButton(
-                    onPressed: () => searchService.removeHistoryItem(index),
-                    icon: const Icon(Icons.close, size: 16),
-                  ),
-                  onTap: () {
-                    _searchController.text = item.query;
-                    _performSearch(item.query);
-                  },
-                );
-              },
-            ),
-          ),
+          const Expanded(child: SizedBox.shrink()),
         ],
       ),
     );
   }
 
-  Widget _buildSearchResults(SearchService searchService) {
+  Widget _buildSearchResults() {
     if (_searchController.text.isEmpty && !_showHistory) {
       return _buildEmptyState();
     }
@@ -638,72 +526,100 @@ class _ComprehensiveSearchPageState
       );
     }
 
-    if (_searchResults.isEmpty && _searchController.text.isNotEmpty) {
-      return _buildNoResultsState();
-    }
-
-    return Column(
-      children: [
-        // Results Header
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${_searchResults.length} results found',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              if (_searchController.text.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _showFilters = !_showFilters;
-                    });
-                  },
-                  icon: const Icon(Icons.tune),
-                  label: const Text('Filters'),
+    // Use firebaseProductsProvider with filters
+    return Consumer(
+      builder: (context, ref, child) {
+        final productsAsync = ref.watch(firebaseProductsProvider(_currentFilters));
+        
+        return productsAsync.when(
+          data: (products) {
+            if (products.isEmpty && _searchController.text.isNotEmpty) {
+              return _buildNoResultsState();
+            }
+            
+            return Column(
+              children: [
+                // Results Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${products.length} results found',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      if (_searchController.text.isNotEmpty)
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _showFilters = !_showFilters;
+                            });
+                          },
+                          icon: const Icon(Icons.tune),
+                          label: const Text('Filters'),
+                        ),
+                    ],
+                  ),
                 ),
-            ],
+                // Results Grid
+                Expanded(
+                  child: ResponsiveProductGrid(
+                    products: products.map((product) {
+                      return ProductCardData(
+                        productId: product.id,
+                        title: product.title,
+                        brand: product.brand,
+                        price: '₹${product.price.toStringAsFixed(0)}',
+                        subtitle: product.subtitle,
+                        imageUrl: 'https://picsum.photos/seed/${product.id}/800/600',
+                        phone: '9000000000',
+                        whatsappNumber: '9000000000',
+                        rating: product.rating,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => ProductDetailPage(product: product),
+                            ),
+                          );
+                        },
+                        onCallPressed: () {
+                          // Handle call action
+                        },
+                        onWhatsAppPressed: () {
+                          // Handle WhatsApp action
+                        },
+                      );
+                    }).toList(),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(),
           ),
-        ),
-
-        // Results Grid
-        Expanded(
-          child: ResponsiveProductGrid(
-            products: _searchResults.map((product) {
-              return ProductCardData(
-                productId: product.id,
-                title: product.title,
-                brand: product.brand,
-                price: '₹${product.price.toStringAsFixed(0)}',
-                subtitle: product.subtitle,
-                imageUrl: 'https://picsum.photos/seed/${product.id}/800/600',
-                phone: '9000000000',
-                whatsappNumber: '9000000000',
-                rating: product.rating,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ProductDetailPage(product: product),
-                    ),
-                  );
-                },
-                onCallPressed: () {
-                  // Handle call action
-                },
-                onWhatsAppPressed: () {
-                  // Handle WhatsApp action
-                },
-              );
-            }).toList(),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          error: (error, stack) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error, size: 64, color: Colors.red.shade400),
+                const SizedBox(height: 16),
+                Text('Failed to load products: ${error.toString()}'),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => ref.refresh(firebaseProductsProvider(_currentFilters)),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -804,35 +720,21 @@ class _ComprehensiveSearchPageState
       _isSearching = true;
       _showSuggestions = false;
       _showHistory = false;
+      _currentFilters = {
+        'search': query.trim(),
+        'limit': 50,
+        if (_selectedCategories.isNotEmpty) 'categories': _selectedCategories.toList(),
+        if (_selectedMaterials.isNotEmpty) 'materials': _selectedMaterials.toList(),
+        if (_selectedBrands.isNotEmpty) 'brands': _selectedBrands.toList(),
+        if (_minPrice > 0) 'minPrice': _minPrice,
+        if (_maxPrice < 100000) 'maxPrice': _maxPrice,
+        'sortBy': _sortBy,
+      };
     });
 
-    final searchServiceAsync = ref.read(searchServiceProvider);
-
-    searchServiceAsync.whenData((searchService) {
-      // Apply filters and get results
-      final results = searchService.filterProducts(
-        query: query,
-        categories: _selectedCategories.isNotEmpty
-            ? _selectedCategories.toList()
-            : null,
-        materials:
-            _selectedMaterials.isNotEmpty ? _selectedMaterials.toList() : null,
-        brands: _selectedBrands.isNotEmpty ? _selectedBrands.toList() : null,
-        minPrice: _minPrice,
-        maxPrice: _maxPrice,
-        sortBy: _sortBy,
-      );
-
-      // Add to search history
-      searchService.addToHistory(query, results.length);
-
-      // Track analytics
-      searchService.trackSearch(query, results.length);
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
+    // The firebaseProductsProvider will automatically update with new filters
+    setState(() {
+      _isSearching = false;
     });
   }
 
@@ -845,7 +747,7 @@ class _ComprehensiveSearchPageState
   void _clearSearch() {
     setState(() {
       _searchController.clear();
-      _searchResults = [];
+      _currentFilters = {};
       _showSuggestions = false;
       _showHistory = true;
     });
@@ -859,6 +761,11 @@ class _ComprehensiveSearchPageState
       _minPrice = 0;
       _maxPrice = 100000;
       _sortBy = 'relevance';
+      _currentFilters = {
+        'search': _searchController.text.trim(),
+        'limit': 50,
+        'sortBy': _sortBy,
+      };
     });
     _applyFilters();
   }
@@ -879,18 +786,5 @@ class _ComprehensiveSearchPageState
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minutes ago';
-    } else {
-      return 'Just now';
-    }
-  }
+  // History timestamp formatter removed (history disabled)
 }

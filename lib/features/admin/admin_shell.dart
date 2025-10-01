@@ -28,6 +28,8 @@ import 'pages/analytics_dashboard_page.dart';
 import 'pages/media_storage_page.dart';
 import 'pages/enhanced_users_management_page.dart';
 import 'pages/enhanced_products_management_page.dart';
+import 'pages/users_management_page_v2.dart';
+import 'pages/products_management_page_v2.dart';
 // rbac service accessed via providers
 import 'auth/admin_login_page.dart';
 import 'rbac/rbac_page.dart';
@@ -168,15 +170,10 @@ class _AdminShellState extends ConsumerState<AdminShell>
         name: 'User Controls',
         icon: Icons.people_outline,
         items: [
-          AdminItem(
+          const AdminItem(
               label: 'Users',
               icon: Icons.people_outline,
-              page: Consumer(
-                builder: (context, ref, child) {
-                  final store = ref.watch(enhancedAdminStoreProvider);
-                  return EnhancedUsersManagementPage(adminStore: store);
-                },
-              )),
+              page: UsersManagementPageV2()),
           const AdminItem(
               label: 'RBAC',
               icon: Icons.admin_panel_settings_outlined,
@@ -199,15 +196,10 @@ class _AdminShellState extends ConsumerState<AdminShell>
               label: 'Sellers',
               icon: Icons.storefront_outlined,
               page: SellerManagementPage()),
-          AdminItem(
+          const AdminItem(
               label: 'Products',
               icon: Icons.inventory_2_outlined,
-              page: Consumer(
-                builder: (context, ref, child) {
-                  final store = ref.watch(enhancedAdminStoreProvider);
-                  return EnhancedProductsManagementPage(adminStore: store);
-                },
-              )),
+              page: ProductsManagementPageV2()),
           const AdminItem(
               label: 'Product Uploads',
               icon: Icons.upload_file_outlined,
@@ -3266,6 +3258,7 @@ class _ProductUploadsPageState extends ConsumerState<_ProductUploadsPage> {
   String _histStatus = 'All';
   @override
   Widget build(BuildContext context) {
+    // TODO: Replace with rbacProvider.can() and firebase* providers
     final store = ref.watch(enhancedAdminStoreProvider);
     final queue = _applyQueueFilters(store.productUploadQueue);
     final history = _applyFilters(store.productUploadHistory);
@@ -3369,6 +3362,7 @@ class _UploadsList extends ConsumerWidget {
   const _UploadsList({required this.queue});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // TODO: Replace with rbacProvider.can() and firebase* providers
     final store = ref.read(enhancedAdminStoreProvider);
     if (queue.isEmpty) return const Center(child: Text('No pending uploads'));
     return ListView.builder(

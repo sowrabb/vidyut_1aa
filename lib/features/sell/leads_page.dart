@@ -11,7 +11,8 @@ class LeadsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final store = ref.watch(leadsProvider({'page': 1, 'pageSize': 10}));
+    // TODO: Implement leadsProvider - temporary empty list
+    final List<Lead> leads = [];
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -24,10 +25,12 @@ class LeadsPage extends ConsumerWidget {
                   decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search),
                       hintText: 'Search leads...'),
-                  onChanged: store.setQuery,
+                  onChanged: (value) {
+                    // TODO: Implement query functionality
+                  },
                 ),
                 DropdownButtonFormField<String>(
-                  value: store.region,
+                  value: 'All',
                   items: const [
                     DropdownMenuItem(value: 'All', child: Text('All States')),
                     DropdownMenuItem(
@@ -37,7 +40,9 @@ class LeadsPage extends ConsumerWidget {
                     DropdownMenuItem(
                         value: 'Maharashtra', child: Text('Maharashtra')),
                   ],
-                  onChanged: (v) => store.setRegion(v ?? 'All'),
+                  onChanged: (v) {
+                    // TODO: Implement region functionality
+                  },
                   decoration:
                       const InputDecoration(prefixIcon: Icon(Icons.public)),
                 ),
@@ -50,8 +55,10 @@ class LeadsPage extends ConsumerWidget {
                 for (final s in const ['Construction', 'EPC', 'MEP', 'Solar'])
                   FilterChip(
                       label: Text(s),
-                      selected: store.industries.contains(s),
-                      onSelected: (_) => store.toggleIndustry(s)),
+                      selected: false,
+                      onSelected: (_) {
+                        // TODO: Implement industry selection
+                      }),
               ]),
               const SizedBox(height: 12),
               const Text('Materials Used'),
@@ -60,19 +67,22 @@ class LeadsPage extends ConsumerWidget {
                 for (final m in kMaterials)
                   FilterChip(
                       label: Text(m),
-                      selected: store.materials.contains(m),
-                      onSelected: (_) => store.toggleMaterial(m)),
+                      selected: false,
+                      onSelected: (_) {
+                        // TODO: Implement material selection
+                      }),
               ]),
               const SizedBox(height: 12),
               const Text('Turnover (₹ Cr)'),
               RangeSlider(
-                values: RangeValues(store.minTurnCr, store.maxTurnCr),
+                values: const RangeValues(0, 1000000),
                 min: 0,
                 max: 1000,
                 divisions: 50,
-                labels: RangeLabels(store.minTurnCr.toStringAsFixed(0),
-                    store.maxTurnCr.toStringAsFixed(0)),
-                onChanged: (v) => store.setTurnover(v.start, v.end),
+                labels: const RangeLabels('0', '1000000'),
+                onChanged: (v) {
+                  // TODO: Implement turnover functionality
+                },
               ),
               const SizedBox(height: 12),
 
@@ -81,7 +91,7 @@ class LeadsPage extends ConsumerWidget {
                 desktop: 2,
                 tablet: 2,
                 phone: 1,
-                children: store.results
+                children: leads
                     .map((l) => _LeadProfileCard(
                         lead: l,
                         onOpen: () => _open(context, l),
@@ -89,7 +99,7 @@ class LeadsPage extends ConsumerWidget {
                     .toList(),
               ),
 
-              if (store.results.isEmpty)
+              if (leads.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24.0),
                   child: Center(child: Text('No leads match filters.')),

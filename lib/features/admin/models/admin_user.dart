@@ -1,11 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../sell/models.dart';
-
-enum UserRole { buyer, seller, admin }
-
-enum UserStatus { active, inactive, suspended, pending }
-
-enum SubscriptionPlan { free, basic, premium, enterprise }
+import '../../auth/models/user_role_models.dart';
 
 @immutable
 class AdminUser {

@@ -10,8 +10,8 @@ class AdminDashboardV2 extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     final rbac = ref.watch(rbacProvider);
-    final analyticsAsync = ref.watch(analyticsProvider);
-    final kycAsync = ref.watch(kycSubmissionsProvider);
+    final analyticsAsync = ref.watch(adminDashboardAnalyticsProvider);
+    final kycPendingCountAsync = ref.watch(kycPendingCountProvider);
     
     // Check admin permissions
     if (!rbac.can('admin.access')) {
@@ -85,15 +85,15 @@ class AdminDashboardV2 extends ConsumerWidget {
                     Expanded(
                       child: _StatCard(
                         title: 'Total Users',
-                        value: '${analytics.metrics['total_users'] ?? 0}',
+                        value: '${analytics.totalUsers}',
                         icon: Icons.people,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _StatCard(
-                        title: 'Active Users',
-                        value: '${analytics.metrics['active_users'] ?? 0}',
+                        title: 'Active Sellers',
+                        value: '${analytics.activeSellers}',
                         icon: Icons.people_outline,
                       ),
                     ),
@@ -101,8 +101,16 @@ class AdminDashboardV2 extends ConsumerWidget {
                     Expanded(
                       child: _StatCard(
                         title: 'Total Products',
-                        value: '${analytics.metrics['total_products'] ?? 0}',
+                        value: '${analytics.totalProducts}',
                         icon: Icons.inventory,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatCard(
+                        title: 'Orders',
+                        value: '${analytics.totalOrders}',
+                        icon: Icons.shopping_cart,
                       ),
                     ),
                   ],
@@ -120,7 +128,7 @@ class AdminDashboardV2 extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               
-              kycAsync.when(
+              kycPendingCountAsync.when(
                 loading: () => const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
@@ -133,7 +141,7 @@ class AdminDashboardV2 extends ConsumerWidget {
                     child: Text('Error loading KYC: $error'),
                   ),
                 ),
-                data: (kycData) {
+                data: (pendingCount) {
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -147,40 +155,19 @@ class AdminDashboardV2 extends ConsumerWidget {
                                 'Pending Reviews',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
-                              Text('${kycData.totalCount} total'),
+                              Text('$pendingCount pending'),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          if (kycData.items.isEmpty)
+                          if (pendingCount == 0)
                             const Text('No pending KYC submissions.')
                           else
-                            ...kycData.items.take(3).map((submission) {
-                              return ListTile(
-                                title: Text(submission.userName),
-                                subtitle: Text('Status: ${submission.status}'),
-                                trailing: submission.status == 'pending'
-                                    ? Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextButton(
-                                            onPressed: () {
-                                              ref.read(kycSubmissionsProvider.notifier)
-                                                  .approveSubmission(submission.id);
-                                            },
-                                            child: const Text('Approve'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              ref.read(kycSubmissionsProvider.notifier)
-                                                  .rejectSubmission(submission.id, 'Rejected');
-                                            },
-                                            child: const Text('Reject'),
-                                          ),
-                                        ],
-                                      )
-                                    : null,
-                              );
-                            }).toList(),
+                            TextButton(
+                              onPressed: () {
+                                // Navigate to KYC management page
+                              },
+                              child: Text('View $pendingCount pending submissions →'),
+                            ),
                         ],
                       ),
                     ),
@@ -197,43 +184,67 @@ class AdminDashboardV2 extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            Row(
               children: [
-                if (rbac.can('users.read'))
-                  _ActionCard(
-                    title: 'Manage Users',
-                    icon: Icons.people,
-                    onTap: () {
-                      // TODO: Navigate to users page
-                    },
+                Expanded(
+                  child: Card(
+                    child: InkWell(
+                      onTap: () {
+                        // TODO: Navigate to user management
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Icon(Icons.people, size: 32),
+                            SizedBox(height: 8),
+                            Text('Manage Users'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                if (rbac.can('products.write'))
-                  _ActionCard(
-                    title: 'Manage Products',
-                    icon: Icons.inventory,
-                    onTap: () {
-                      // TODO: Navigate to products page
-                    },
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Card(
+                    child: InkWell(
+                      onTap: () {
+                        // TODO: Navigate to product moderation
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Icon(Icons.inventory, size: 32),
+                            SizedBox(height: 8),
+                            Text('Moderate Products'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                if (rbac.can('notifications.send'))
-                  _ActionCard(
-                    title: 'Send Notifications',
-                    icon: Icons.notifications,
-                    onTap: () {
-                      // TODO: Navigate to notifications page
-                    },
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Card(
+                    child: InkWell(
+                      onTap: () {
+                        // TODO: Navigate to KYC review
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Icon(Icons.verified_user, size: 32),
+                            SizedBox(height: 8),
+                            Text('Review KYC'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                if (rbac.can('billing.manage'))
-                  _ActionCard(
-                    title: 'Billing',
-                    icon: Icons.payment,
-                    onTap: () {
-                      // TODO: Navigate to billing page
-                    },
-                  ),
+                ),
               ],
             ),
           ],
@@ -260,6 +271,7 @@ class _StatCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, size: 32, color: AppColors.primary),
             const SizedBox(height: 8),
@@ -275,47 +287,8 @@ class _StatCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _ActionCard({
-    required this.title,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(icon, size: 24, color: AppColors.primary),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
         ),
       ),
     );

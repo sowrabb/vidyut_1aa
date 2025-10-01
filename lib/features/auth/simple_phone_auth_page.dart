@@ -31,33 +31,28 @@ class _SimplePhoneAuthPageState extends ConsumerState<SimplePhoneAuthPage> {
   Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final authService = ref.read(simplePhoneAuthServiceProvider);
+    final authService = ref.read(authControllerProvider);
 
     if (_isLogin) {
-      final success = await authService.signInWithPhonePassword(
-        phoneNumber: _phoneController.text.trim(),
-        password: _passwordController.text,
+      await ref.read(authControllerProvider.notifier).signInWithOtp(
+        verificationId: _phoneController.text.trim(),
+        smsCode: _passwordController.text,
       );
-
-      if (success && mounted) {
-        Navigator.of(context).pushReplacementNamed('/');
-      }
+      if (mounted) Navigator.of(context).pushReplacementNamed('/');
     } else {
-      final success = await authService.signUpWithPhonePassword(
-        phoneNumber: _phoneController.text.trim(),
+      await ref.read(authControllerProvider.notifier).signUpWithEmailPassword(
+        email: '${_phoneController.text.trim()}@phone.local',
         password: _passwordController.text,
         name: _nameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
       );
-
-      if (success && mounted) {
-        Navigator.of(context).pushReplacementNamed('/');
-      }
+      if (mounted) Navigator.of(context).pushReplacementNamed('/');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authService = ref.watch(simplePhoneAuthServiceProvider);
+    final authService = ref.watch(authControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -115,7 +110,7 @@ class _SimplePhoneAuthPageState extends ConsumerState<SimplePhoneAuthPage> {
                       const SizedBox(height: 32),
 
                       // Error message
-                      if (authService.error != null) ...[
+                      if (authService.message != null) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -130,12 +125,12 @@ class _SimplePhoneAuthPageState extends ConsumerState<SimplePhoneAuthPage> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  authService.error!,
+                                  authService.message!,
                                   style: TextStyle(color: Colors.red.shade600),
                                 ),
                               ),
                               IconButton(
-                                onPressed: () => authService.clearError(),
+                                onPressed: () => ref.read(authControllerProvider.notifier).clearMessage(),
                                 icon: Icon(Icons.close,
                                     color: Colors.red.shade600),
                               ),
@@ -260,7 +255,7 @@ class _SimplePhoneAuthPageState extends ConsumerState<SimplePhoneAuthPage> {
                             _phoneController.clear();
                             _passwordController.clear();
                             _nameController.clear();
-                            authService.clearError();
+                            ref.read(authControllerProvider.notifier).clearMessage();
                           });
                         },
                         child: Text(

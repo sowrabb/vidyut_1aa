@@ -28,9 +28,9 @@ analyzer:
     # But don't fail the build on infos:
     todo: info
   exclude:
-    - lib/examples/**
-    - test/**
-    - integration_test/**
+    - docs/examples/**
+    - build/**
+    - .dart_tool/**
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

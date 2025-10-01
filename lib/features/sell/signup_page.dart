@@ -4,7 +4,6 @@ import '../../app/layout/adaptive.dart';
 import '../../app/tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/provider_registry.dart';
-import '../admin/models/admin_user.dart';
 
 class SellerSignupPage extends StatefulWidget {
   const SellerSignupPage({super.key});
@@ -14,12 +13,14 @@ class SellerSignupPage extends StatefulWidget {
 }
 
 class _SellerSignupPageState extends State<SellerSignupPage> {
-  int _step = 0; // 0=qualify, 1=plan, 2=business, 3=kyc, 4=pending
+  int _step = 0; // 0=qualify, 1=plan, 2=payment, 3=business, 4=kyc, 5=pending
 
   // Step 1: plan
   String _plan = 'Plus';
 
-  // Step 2: business details
+  // Step 2: payment (Razorpay) - no additional state needed
+
+  // Step 3: business details
   final _ownerCtrl = TextEditingController();
   final _companyCtrl = TextEditingController();
   final _gstCtrl = TextEditingController();
@@ -43,7 +44,7 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
     super.dispose();
   }
 
-  double get _progress => (_step / 4).clamp(0, 1).toDouble();
+  double get _progress => (_step / 5).clamp(0, 1).toDouble();
 
   @override
   Widget build(BuildContext context) {
@@ -76,10 +77,12 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
       case 1:
         return _planStep(context);
       case 2:
-        return _businessStep(context);
+        return _paymentStep(context);
       case 3:
-        return _kycStep(context);
+        return _businessStep(context);
       case 4:
+        return _kycStep(context);
+      case 5:
         return _pendingStep(context);
       default:
         return const SizedBox.shrink();
@@ -141,7 +144,7 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton(
-              onPressed: () => setState(() => _step = 2),
+              onPressed: () => setState(() => _step = 2), // Go to payment step
               child: const Text('Next')),
         )
       ]);
@@ -181,6 +184,179 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
     );
   }
 
+  Widget _paymentStep(BuildContext context) {
+    return Consumer(builder: (context, ref, _) {
+      final session = ref.watch(sessionControllerProvider);
+      final razorpayService = ref.read(razorpayServiceProvider);
+
+      return FutureBuilder(
+        future: () async {
+          razorpayService.initialize();
+          final selectedPlan = _plan == 'Plus' ? SubscriptionPlan.plus : SubscriptionPlan.pro;
+          return razorpayService.createSubscriptionOrder(
+            userId: session.userId ?? 'guest',
+            userName: session.displayName ?? session.email ?? 'Guest',
+            userEmail: session.email ?? 'guest@vidyut.com',
+            plan: selectedPlan,
+          );
+        }(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Payment', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 12),
+                Text('Error: ${snapshot.error ?? "Failed to load pricing"}'),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () => setState(() => _step = 1),
+                  child: const Text('Back to Plans'),
+                ),
+              ],
+            );
+          }
+
+          final orderDetails = snapshot.data!;
+          final pricing = orderDetails['plan'] as Map<String, dynamic>;
+          final amount = orderDetails['amount'] as int;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Payment', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 12),
+              Card(
+                elevation: AppElevation.level1,
+                shadowColor: AppColors.shadowSoft,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppColors.outlineSoft),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Plan: $_plan',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          Text(
+                            '₹${amount ~/ 100}/year',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Features included:',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...(pricing['features'] as List).map((feature) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(feature.toString())),
+                              ],
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  OutlinedButton(
+                    onPressed: () => setState(() => _step = 1),
+                    child: const Text('Back'),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: () async {
+                      if (session.userId == null || session.email == null) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please log in to continue.')),
+                        );
+                        return;
+                      }
+
+                      try {
+                        await razorpayService.openCheckout(
+                          orderId: orderDetails['order_id'],
+                          amount: amount,
+                          currency: orderDetails['currency'],
+                          userName: session.displayName ?? session.email!,
+                          userEmail: session.email!,
+                          userPhone: '', // Optional
+                          planName: pricing['name'],
+                          onSuccess: (result) async {
+                            final selectedPlan = _plan == 'Plus' ? SubscriptionPlan.plus : SubscriptionPlan.pro;
+                            
+                            // Activate subscription
+                            await razorpayService.activateSubscription(
+                              userId: session.userId!,
+                              orderId: result.orderId!,
+                              plan: selectedPlan,
+                            );
+                            
+                            // Update local store
+                            final sellerStore = ref.read(sellerStoreProvider);
+                            sellerStore.updateSubscriptionPlan(_plan.toLowerCase());
+                            
+                            if (!mounted) return;
+                            setState(() => _step = 3); // Go to business details
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Payment successful! Complete business details.')),
+                            );
+                          },
+                          onFailure: (result) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Payment failed: ${result.error}')),
+                            );
+                          },
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Pay Now'),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      );
+    });
+  }
+
   Widget _businessStep(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Business details',
@@ -217,7 +393,7 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
       const SizedBox(height: 16),
       Row(children: [
         OutlinedButton(
-            onPressed: () => setState(() => _step = 1),
+            onPressed: () => setState(() => _step = 2), // Go back to payment
             child: const Text('Back')),
         const Spacer(),
         FilledButton(
@@ -228,7 +404,7 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
                     content: Text('Owner and Company are required')));
                 return;
               }
-              setState(() => _step = 3);
+              setState(() => _step = 4); // Go to KYC
             },
             child: const Text('Next')),
       ])
@@ -259,7 +435,7 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
       const SizedBox(height: 16),
       Row(children: [
         OutlinedButton(
-            onPressed: () => setState(() => _step = 2),
+            onPressed: () => setState(() => _step = 3), // Go back to business details
             child: const Text('Back')),
         const Spacer(),
         FilledButton(
@@ -285,7 +461,7 @@ class _SellerSignupPageState extends State<SellerSignupPage> {
                       : (throw Exception('No sellers present in demo data')));
               enhancedAdmin.approveSeller(pending.id,
                   comments: 'Auto-approved from signup flow');
-              setState(() => _step = 4);
+              setState(() => _step = 5); // Go to pending approval
             },
             child: const Text('Upload & Submit')),
       ])

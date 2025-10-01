@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/layout/adaptive.dart';
-import '../../app/app_state.dart';
+import '../../app/app_state.dart' as app_state;
 import '../../state/location/location_state.dart' as loc;
 import 'search_store.dart';
 import '../../widgets/responsive_product_grid.dart';
@@ -17,15 +17,15 @@ final searchStoreProvider =
     ChangeNotifierProvider.autoDispose<SearchStore>((ref) {
   final sellerStore = ref.read(sellerStoreProvider);
   final location = ref.read(locationControllerProvider);
-  final legacy = AppState();
+  final legacy = app_state.AppState();
   legacy.setLocation(
     city: location.city,
     area: location.area,
     state: location.stateName,
     radiusKm: location.radiusKm,
     mode: location.mode == loc.LocationMode.auto
-        ? LocationMode.auto
-        : LocationMode.manual,
+        ? app_state.LocationMode.auto
+        : app_state.LocationMode.manual,
     latitude: location.latitude,
     longitude: location.longitude,
   );

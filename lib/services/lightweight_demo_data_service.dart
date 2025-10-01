@@ -3,6 +3,7 @@ import 'dart:async';
 import '../features/sell/models.dart';
 import '../features/admin/models/hero_section.dart';
 import '../features/admin/models/admin_user.dart';
+import '../features/auth/models/user_role_models.dart';
 import '../features/admin/models/billing_models.dart';
 import '../features/admin/models/notification.dart' as admin_notif;
 import '../features/messaging/models.dart';
@@ -677,7 +678,7 @@ class LightweightDemoDataService extends ChangeNotifier {
         phone: '+91 98765 43211',
         role: UserRole.seller,
         status: UserStatus.active,
-        subscription: SubscriptionPlan.premium,
+        subscription: SubscriptionPlan.pro,
         joinDate: now.subtract(const Duration(days: 15)),
         lastActive: now,
         location: 'Delhi',
@@ -735,7 +736,7 @@ class LightweightDemoDataService extends ChangeNotifier {
         phone: '+91 98888 77777',
         role: UserRole.seller,
         status: UserStatus.suspended,
-        subscription: SubscriptionPlan.premium,
+        subscription: SubscriptionPlan.pro,
         joinDate: now.subtract(const Duration(days: 60)),
         lastActive: now.subtract(const Duration(days: 10)),
         location: 'Kolkata',

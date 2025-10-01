@@ -140,6 +140,11 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                       }
                       setState(() => _submitting = true);
                       try {
+                        // Get current user info from session
+                        final session = ref.read(sessionControllerProvider);
+                        final userId = session.userId ?? 'guest-${DateTime.now().millisecondsSinceEpoch}';
+                        final userName = session.displayName ?? session.email ?? 'Guest User';
+                        
                         final id =
                             'rev_${DateTime.now().microsecondsSinceEpoch}';
                         final images = _picked
@@ -150,8 +155,8 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                         final review = Review(
                           id: id,
                           productId: widget.productId,
-                          userId: 'demo-user',
-                          authorDisplay: 'Demo User',
+                          userId: userId,
+                          authorDisplay: userName,
                           rating: _rating,
                           title: _titleCtrl.text.trim().isEmpty
                               ? null

@@ -65,8 +65,8 @@ final firebaseProductsProvider =
   );
 });
 
-/// Firebase Single product provider
-final firebaseProductProvider =
+/// Firebase Single product provider (from repository)
+final firebaseRepositoryProductProvider =
     StreamProvider.family<Product?, String>((ref, productId) {
   final repository = ref.watch(firestoreRepositoryProvider);
   return repository.streamProduct(productId);
@@ -104,7 +104,7 @@ final userProductsProvider =
 // =============================================================================
 
 /// Firebase Product reviews provider
-final firebaseProductReviewsProvider =
+final firebaseRepositoryProductReviewsProvider =
     StreamProvider.family<List<Review>, String>((ref, productId) {
   final repository = ref.watch(firestoreRepositoryProvider);
   return repository.streamProductReviews(productId);
@@ -266,8 +266,8 @@ final firebaseSearchResultsProvider =
 
 /// Firebase Unread notification count provider
 final firebaseUnreadNotificationCountProvider = Provider<int>((ref) {
-  final notificationState = ref.watch(notificationServiceProvider);
-  return notificationState.unreadCount;
+  // Temporary placeholder until notification system is implemented
+  return 0;
 });
 
 // =============================================================================

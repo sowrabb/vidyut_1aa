@@ -45,6 +45,18 @@ class MockFirebaseAuthService extends _i1.Mock
       ) as bool);
 
   @override
+  bool get isGuest => (super.noSuchMethod(
+        Invocation.getter(#isGuest),
+        returnValue: false,
+      ) as bool);
+
+  @override
+  bool get isEmailVerified => (super.noSuchMethod(
+        Invocation.getter(#isEmailVerified),
+        returnValue: false,
+      ) as bool);
+
+  @override
   bool get hasListeners => (super.noSuchMethod(
         Invocation.getter(#hasListeners),
         returnValue: false,
@@ -131,6 +143,33 @@ class MockFirebaseAuthService extends _i1.Mock
         Invocation.method(
           #resendOTP,
           [phoneNumber],
+        ),
+        returnValue: _i3.Future<bool>.value(false),
+      ) as _i3.Future<bool>);
+
+  @override
+  _i3.Future<bool> signInAsGuest() => (super.noSuchMethod(
+        Invocation.method(
+          #signInAsGuest,
+          [],
+        ),
+        returnValue: _i3.Future<bool>.value(false),
+      ) as _i3.Future<bool>);
+
+  @override
+  _i3.Future<bool> sendPasswordResetEmail(String? email) => (super.noSuchMethod(
+        Invocation.method(
+          #sendPasswordResetEmail,
+          [email],
+        ),
+        returnValue: _i3.Future<bool>.value(false),
+      ) as _i3.Future<bool>);
+
+  @override
+  _i3.Future<bool> sendEmailVerification() => (super.noSuchMethod(
+        Invocation.method(
+          #sendEmailVerification,
+          [],
         ),
         returnValue: _i3.Future<bool>.value(false),
       ) as _i3.Future<bool>);

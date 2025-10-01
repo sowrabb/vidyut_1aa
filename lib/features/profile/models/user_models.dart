@@ -4,7 +4,7 @@ class UserProfile {
   final String id;
   final String name;
   final String email;
-  final String phone;
+  final String? phone;
   final String? profileImageUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -15,7 +15,7 @@ class UserProfile {
     required this.id,
     required this.name,
     required this.email,
-    required this.phone,
+    this.phone,
     this.profileImageUrl,
     required this.createdAt,
     required this.updatedAt,
@@ -63,13 +63,17 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      phone: json['phone'] as String,
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? 'User',
+      email: json['email'] as String? ?? '',
+      phone: json['phone'] as String?,
       profileImageUrl: json['profileImageUrl'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : DateTime.now(),
       isEmailVerified: json['isEmailVerified'] as bool? ?? false,
       isPhoneVerified: json['isPhoneVerified'] as bool? ?? false,
     );

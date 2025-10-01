@@ -169,16 +169,20 @@ class _FirebaseAuthPageState extends ConsumerState<FirebaseAuthPage> {
         actions: [
           TextButton(
             onPressed: () async {
+              if (!mounted) return; // ✅ Check mounted before navigation
               Navigator.of(context).pop();
+              if (!mounted) return; // ✅ Check mounted before ref usage
               await ref.read(authControllerProvider.notifier).signOut();
             },
             child: const Text('Sign Out'),
           ),
           FilledButton(
             onPressed: () async {
+              if (!mounted) return; // ✅ Check mounted first
               await _handleEmailVerification();
               if (!mounted) return;
               Navigator.of(context).pop();
+              if (!mounted) return; // ✅ Check mounted before ref usage
               await ref.read(authControllerProvider.notifier).signOut();
             },
             child: const Text('Resend Email'),
@@ -189,6 +193,7 @@ class _FirebaseAuthPageState extends ConsumerState<FirebaseAuthPage> {
   }
 
   void _showErrorSnackBar(String message, {bool isError = true}) {
+    if (!mounted) return; // ✅ Check mounted before using context
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
@@ -197,6 +202,7 @@ class _FirebaseAuthPageState extends ConsumerState<FirebaseAuthPage> {
           backgroundColor: isError ? Colors.red : Colors.green,
         ),
       );
+    if (!mounted) return; // ✅ Check mounted before ref usage
     ref.read(authControllerProvider.notifier).clearMessage();
   }
 

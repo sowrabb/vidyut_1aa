@@ -1,6 +1,149 @@
 /// Analytics & Reporting Models
 library;
 
+// Simple analytics snapshot models for admin providers
+class AnalyticsSnapshot {
+  final int totalUsers;
+  final int activeSellers;
+  final int totalProducts;
+  final int totalOrders;
+  final Map<String, dynamic> metrics;
+  final List<ActivityEvent> events;
+  final DateTime lastUpdated;
+
+  AnalyticsSnapshot({
+    required this.totalUsers,
+    required this.activeSellers,
+    required this.totalProducts,
+    required this.totalOrders,
+    required this.metrics,
+    required this.events,
+    required this.lastUpdated,
+  });
+
+  factory AnalyticsSnapshot.fromJson(Map<String, dynamic> json) => AnalyticsSnapshot(
+    totalUsers: json['total_users'] as int? ?? 0,
+    activeSellers: json['active_sellers'] as int? ?? 0,
+    totalProducts: json['total_products'] as int? ?? 0,
+    totalOrders: json['total_orders'] as int? ?? 0,
+    metrics: Map<String, dynamic>.from(json['metrics'] ?? {}),
+    events: (json['events'] as List? ?? [])
+        .map((e) => ActivityEvent.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    lastUpdated: json['last_updated'] != null
+        ? DateTime.parse(json['last_updated'] as String)
+        : DateTime.now(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'total_users': totalUsers,
+    'active_sellers': activeSellers,
+    'total_products': totalProducts,
+    'total_orders': totalOrders,
+    'metrics': metrics,
+    'events': events.map((e) => e.toJson()).toList(),
+    'last_updated': lastUpdated.toIso8601String(),
+  };
+}
+
+class ProductAnalytics {
+  final int totalProducts;
+  final int activeProducts;
+  final List<Map<String, dynamic>> topProducts;
+  final Map<String, int> productViews;
+
+  ProductAnalytics({
+    required this.totalProducts,
+    required this.activeProducts,
+    required this.topProducts,
+    required this.productViews,
+  });
+
+  factory ProductAnalytics.fromJson(Map<String, dynamic> json) => ProductAnalytics(
+    totalProducts: json['total_products'] as int? ?? 0,
+    activeProducts: json['active_products'] as int? ?? 0,
+    topProducts: List<Map<String, dynamic>>.from(json['top_products'] ?? []),
+    productViews: Map<String, int>.from(json['product_views'] ?? {}),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'total_products': totalProducts,
+    'active_products': activeProducts,
+    'top_products': topProducts,
+    'product_views': productViews,
+  };
+}
+
+class UserAnalytics {
+  final int totalUsers;
+  final int activeUsers;
+  final Map<String, int> userGrowth;
+  final Map<String, int> activeUserSessions;
+
+  UserAnalytics({
+    required this.totalUsers,
+    required this.activeUsers,
+    required this.userGrowth,
+    required this.activeUserSessions,
+  });
+
+  factory UserAnalytics.fromJson(Map<String, dynamic> json) => UserAnalytics(
+    totalUsers: json['total_users'] as int? ?? 0,
+    activeUsers: json['active_users'] as int? ?? 0,
+    userGrowth: Map<String, int>.from(json['user_growth'] ?? {}),
+    activeUserSessions: Map<String, int>.from(json['active_user_sessions'] ?? {}),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'total_users': totalUsers,
+    'active_users': activeUsers,
+    'user_growth': userGrowth,
+    'active_user_sessions': activeUserSessions,
+  };
+}
+
+class ActivityEvent {
+  final String id;
+  final String userId;
+  final String action;
+  final String resourceType;
+  final String resourceId;
+  final DateTime timestamp;
+  final Map<String, dynamic> metadata;
+
+  ActivityEvent({
+    required this.id,
+    required this.userId,
+    required this.action,
+    required this.resourceType,
+    required this.resourceId,
+    required this.timestamp,
+    required this.metadata,
+  });
+
+  factory ActivityEvent.fromJson(Map<String, dynamic> json) => ActivityEvent(
+    id: json['id'] as String? ?? '',
+    userId: json['user_id'] as String? ?? '',
+    action: json['action'] as String? ?? '',
+    resourceType: json['resource_type'] as String? ?? '',
+    resourceId: json['resource_id'] as String? ?? '',
+    timestamp: json['timestamp'] != null
+        ? DateTime.parse(json['timestamp'] as String)
+        : DateTime.now(),
+    metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'user_id': userId,
+    'action': action,
+    'resource_type': resourceType,
+    'resource_id': resourceId,
+    'timestamp': timestamp.toIso8601String(),
+    'metadata': metadata,
+  };
+}
+
 class AnalyticsDashboard {
   final String id;
   final String name;

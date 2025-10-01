@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app/app.dart';
 import 'firebase_options.dart';
+import 'state/app_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,5 +18,5 @@ void main() async {
   PaintingBinding.instance.imageCache.maximumSizeBytes =
       100 * 1024 * 1024; // 100MB limit
 
-  runApp(const ProviderScope(child: VidyutApp()));
+  runApp(buildAppProviderScope(child: const VidyutApp()));
 }

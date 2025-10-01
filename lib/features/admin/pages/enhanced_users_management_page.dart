@@ -170,7 +170,7 @@ class _EnhancedUsersManagementPageState
                         onTap: () => _showUserDetails(user),
                         onEdit: () => _showEditUserDialog(user),
                         onDelete: () => _showDeleteUserDialog(user),
-                        onImpersonate: user.role == UserRole.seller
+                        onImpersonate: user.role.toString().contains('seller')
                             ? () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(

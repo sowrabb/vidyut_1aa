@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/admin_user.dart';
+import '../../auth/models/user_role_models.dart';
 
 /// User card widget with selection, actions, and status management
 class UserCard extends StatelessWidget {
@@ -237,6 +238,10 @@ class UserCard extends StatelessWidget {
         backgroundColor = Colors.teal;
         label = 'Buyer';
         break;
+      case UserRole.guest:
+        backgroundColor = Colors.grey;
+        label = 'Guest';
+        break;
     }
 
     return Chip(
@@ -295,6 +300,8 @@ class UserCard extends StatelessWidget {
         return Colors.blue;
       case UserRole.buyer:
         return Colors.teal;
+      case UserRole.guest:
+        return Colors.grey;
     }
   }
 

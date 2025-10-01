@@ -41,10 +41,10 @@ class _ProductPickerState extends ConsumerState<ProductPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final productsAsync = ref.watch(productsProvider({}));
+    final productsAsync = ref.watch(firebaseProductsProvider({'limit': 200}));
     return productsAsync.when(
-      data: (productPage) {
-        List<Product> all = productPage.products;
+      data: (products) {
+        List<Product> all = products;
 
         if (widget.statusFilter != null) {
           all = all.where((p) => p.status == widget.statusFilter).toList();

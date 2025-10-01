@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/location_aware_filter_service.dart';
 import '../services/location_service.dart';
-import '../../../app/provider_registry.dart' as providers;
+import '../../../app/provider_registry.dart';
 import '../features/sell/models.dart';
 
 class LocationAwareProductFilter extends ConsumerStatefulWidget {
@@ -27,22 +27,22 @@ class _LocationAwareProductFilterState
 
   @override
   Widget build(BuildContext context) {
-    final locationServiceAsync = ref.watch(providers.locationServiceProvider);
-    final filterServiceAsync =
-        ref.watch(providers.locationAwareFilterServiceProvider);
+    final locationServiceAsync = ref.watch(locationServiceProvider);
+    final filterServiceAsync = ref.watch(locationAwareFilterServiceProvider);
 
     return filterServiceAsync.when(
-      data: (filterService) => Card(
-        margin: const EdgeInsets.all(8),
-        child: Column(
-          children: [
+      data: (filterService) {
+        return Card(
+          margin: const EdgeInsets.all(8),
+          child: Column(
+            children: [
             // Filter Header
             ListTile(
               leading: const Icon(Icons.location_on),
               title: const Text('Location Filter'),
               subtitle:
                   _buildFilterSubtitle(locationServiceAsync, filterService),
-            trailing: Row(
+              trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.showAdvancedOptions)
@@ -157,7 +157,17 @@ class _LocationAwareProductFilterState
               padding: const EdgeInsets.all(16),
               child: _buildFilterSummary(filterService),
             ),
-        ],
+            ],
+          ),
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text('Error loading location filter: $error'),
       ),
     );
   }
@@ -399,18 +409,19 @@ class LocationAwareProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filterService =
-        ref.watch(providers.locationAwareFilterServiceProvider);
-    final distanceInfo = filterService.getProductDistanceInfo(product);
+    final filterServiceAsync = ref.watch(locationAwareFilterServiceProvider);
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return filterServiceAsync.when(
+      data: (filterService) {
+        final distanceInfo = filterService.getProductDistanceInfo(product);
+        return Card(
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Product Info
               Row(
                 children: [
@@ -512,10 +523,12 @@ class LocationAwareProductCard extends ConsumerWidget {
                   ],
                 ),
               ],
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
       loading: () => const Card(
         margin: EdgeInsets.all(8),
         child: Padding(

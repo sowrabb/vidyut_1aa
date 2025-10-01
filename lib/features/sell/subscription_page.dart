@@ -182,52 +182,132 @@ class SubscriptionPage extends ConsumerWidget {
     );
   }
 
-  void _showUpgradeDialog(BuildContext context, WidgetRef ref, String plan) {
-    final sellerStore = ref.read(sellerStoreProvider);
+  void _showUpgradeDialog(BuildContext context, WidgetRef ref, String plan) async {
     final planKey = plan.toLowerCase();
+    
+    // Free plan doesn't require payment
+    if (planKey == 'free') {
+      final sellerStore = ref.read(sellerStoreProvider);
+      sellerStore.updateSubscriptionPlan(planKey);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Successfully downgraded to Free plan!')),
+      );
+      return;
+    }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Upgrade to $plan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-                'Payment integration will be implemented in the next phase. For now, this is a demo of the subscription flow.'),
-            const SizedBox(height: 16),
-            Text(
-              'New Limits:',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+    // Get session info
+    final session = ref.read(sessionControllerProvider);
+    final razorpayService = ref.read(razorpayServiceProvider);
+
+    if (session.userId == null || session.email == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to upgrade.')),
+      );
+      return;
+    }
+
+    // Initialize Razorpay
+    razorpayService.initialize();
+
+    try {
+      // Create subscription order
+      final selectedPlan = planKey == 'plus' ? SubscriptionPlan.plus : SubscriptionPlan.pro;
+      final orderDetails = await razorpayService.createSubscriptionOrder(
+        userId: session.userId!,
+        userName: session.displayName ?? session.email!,
+        userEmail: session.email!,
+        plan: selectedPlan,
+      );
+
+      final pricing = orderDetails['plan'] as Map<String, dynamic>;
+      
+      // Show payment confirmation dialog
+      if (!context.mounted) return;
+      final shouldProceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Upgrade to $plan'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Price: ₹${(orderDetails['amount'] as int) / 100}/year',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'New Limits:',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text('• Products: ${_getProductLimit(planKey)}'),
+              Text('• Ads: ${_getAdLimit(planKey)}'),
+              Text('• Analytics: Enabled'),
+              if (planKey == 'pro') const Text('• Advanced Features: Enabled'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 8),
-            Text('• Products: ${_getProductLimit(planKey)}'),
-            Text('• Ads: ${_getAdLimit(planKey)}'),
-            Text('• Analytics: ${planKey == 'free' ? 'Disabled' : 'Enabled'}'),
-            if (planKey == 'pro') const Text('• Advanced Features: Enabled'),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Proceed to Payment'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              sellerStore.updateSubscriptionPlan(planKey);
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Successfully upgraded to $plan plan!')),
-              );
-            },
-            child: const Text('Upgrade'),
-          ),
-        ],
-      ),
-    );
+      );
+
+      if (shouldProceed != true || !context.mounted) return;
+
+      // Open Razorpay checkout
+      await razorpayService.openCheckout(
+        orderId: orderDetails['order_id'],
+        amount: orderDetails['amount'],
+        currency: orderDetails['currency'],
+        userName: session.displayName ?? session.email!,
+        userEmail: session.email!,
+        userPhone: '', // Optional phone
+        planName: pricing['name'],
+        onSuccess: (result) async {
+          // Activate subscription on successful payment
+          await razorpayService.upgradeSubscription(
+            userId: session.userId!,
+            orderId: result.orderId!,
+            fromPlan: SubscriptionPlan.free, // Get from current subscription
+            toPlan: selectedPlan,
+          );
+          
+          // Update local store
+          final sellerStore = ref.read(sellerStoreProvider);
+          sellerStore.updateSubscriptionPlan(planKey);
+          
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Successfully upgraded to $plan plan!')),
+          );
+        },
+        onFailure: (result) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Payment failed: ${result.error}')),
+          );
+        },
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   String _getProductLimit(String plan) {

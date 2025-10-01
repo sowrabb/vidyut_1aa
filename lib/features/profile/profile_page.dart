@@ -6,7 +6,6 @@ import 'package:ionicons/ionicons.dart';
 import '../messaging/messaging_pages.dart';
 import '../../app/tokens.dart';
 import '../../widgets/notification_badge.dart';
-import 'widgets/profile_settings_widgets.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -73,46 +72,59 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
+class _ProfileHeader extends ConsumerWidget {
   const _ProfileHeader();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(firebaseCurrentUserProfileProvider);
     return Card(
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: AppColors.outlineSoft)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(children: [
-          const CircleAvatar(radius: 28, child: Icon(Icons.person)),
-          const SizedBox(width: 12),
-          const Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text('Buyer Name',
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                SizedBox(height: 4),
-                Text('buyer@example.com',
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-              ])),
-          OutlinedButton(onPressed: () {}, child: const Text('Edit Profile')),
-          const SizedBox(width: 8),
-          Consumer(
-            builder: (context, ref, child) {
-              final authService = ref.watch(otpAuthServiceProvider);
-              return TextButton(
-                onPressed: () async {
-                  await authService.logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacementNamed('/');
-                  }
+        child: profileAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Row(children: const [
+            CircleAvatar(radius: 28, child: Icon(Icons.person)),
+            SizedBox(width: 12),
+            Expanded(child: Text('Profile unavailable')),
+          ]),
+          data: (profile) {
+            final name = profile?.name ?? 'User';
+            final email = profile?.email ?? '';
+            return Row(children: [
+              const CircleAvatar(radius: 28, child: Icon(Icons.person)),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Text(email,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ])),
+              OutlinedButton(
+                  onPressed: () {}, child: const Text('Edit Profile')),
+              const SizedBox(width: 8),
+              Consumer(
+                builder: (context, ref, child) {
+                  final auth = ref.watch(authControllerProvider);
+                  return TextButton(
+                    onPressed: () async {
+                      await ref.read(authControllerProvider.notifier).signOut();
+                      if (context.mounted) {
+                        Navigator.of(context).pushReplacementNamed('/');
+                      }
+                    },
+                    child: Text(auth.isGuest ? 'Sign Up' : 'Logout'),
+                  );
                 },
-                child: Text(authService.isGuest ? 'Sign Up' : 'Logout'),
-              );
-            },
-          ),
-        ]),
+              ),
+            ]);
+          },
+        ),
       ),
     );
   }
@@ -223,30 +235,32 @@ class _SettingsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userStore = ref.watch(userStoreProvider);
-
+    final profileAsync = ref.watch(firebaseCurrentUserProfileProvider);
     return ContentClamp(
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Profile Section
-          ProfileSection(profile: userStore.profile),
-          const SizedBox(height: 24),
-
-          // Security Section
-          SecuritySection(userStore: userStore),
-          const SizedBox(height: 24),
-
-          // Notifications Section
-          NotificationsSection(settings: userStore.notificationSettings),
-          const SizedBox(height: 24),
-
-          // Preferences Section
-          PreferencesSection(preferences: userStore.preferences),
-          const SizedBox(height: 24),
-
-          // Account Actions Section
-          AccountActionsSection(userStore: userStore),
+          profileAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => const Text('Unable to load profile settings'),
+            data: (profile) {
+              if (profile == null) {
+                return const Text('No profile data.');
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Name: ${profile.name}'),
+                  const SizedBox(height: 8),
+                  Text('Email: ${profile.email}'),
+                  const SizedBox(height: 8),
+                  Text('Phone: ${profile.phone ?? '-'}'),
+                  const SizedBox(height: 16),
+                  const Text('More settings coming soon...'),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

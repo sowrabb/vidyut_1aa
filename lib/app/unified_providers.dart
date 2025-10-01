@@ -337,6 +337,18 @@ class CategoriesStore extends AsyncNotifier<CategoryTree> {
   @override
   Future<CategoryTree> build() async {
     final demoDataService = ref.read(lightweightDemoDataServiceProvider);
+    
+    // ✅ FIX: Listen to demo data service changes and rebuild
+    // This ensures admin category changes are immediately visible in the app
+    ref.listen<LightweightDemoDataService>(
+      lightweightDemoDataServiceProvider,
+      (previous, next) {
+        // When demo data changes (e.g., admin adds/updates category),
+        // invalidate this provider to trigger a rebuild
+        ref.invalidateSelf();
+      },
+    );
+    
     final categories = demoDataService.allCategories;
 
     final parentChildrenMap = <String, List<CategoryData>>{};

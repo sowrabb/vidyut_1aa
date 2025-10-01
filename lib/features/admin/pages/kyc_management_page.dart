@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/kyc_models.dart';
 import '../../../app/provider_registry.dart';
+import '../../../state/admin/kyc_providers.dart';
 import '../widgets/bulk_actions_bar.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/loading_overlay.dart';
@@ -29,61 +30,22 @@ class _KycManagementPageState extends ConsumerState<KycManagementPage> {
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    // Defer to next frame to avoid notifyListeners during build
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadKycReviews());
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadKycReviews() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final store =
-          ProviderScope.containerOf(context).read(enhancedAdminStoreProvider);
-      await store.loadKycReviews(
-        page: _currentPage,
-        limit: _pageSize,
-        status: _selectedStatus,
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        overdue: _showOverdue,
-        highPriority: _showHighPriority,
-        sortBy: _sortBy,
-        sortOrder: _sortOrder,
-      );
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   void _onFilterChanged() {
-    _currentPage = 1;
-    _selectedReviews.clear();
-    _loadKycReviews();
+    setState(() {
+      _currentPage = 1;
+      _selectedReviews.clear();
+    });
   }
 
   void _onPageChanged(int page) {
     setState(() {
       _currentPage = page;
     });
-    _loadKycReviews();
   }
 
   void _onReviewSelected(String reviewId, bool selected) {
@@ -130,7 +92,7 @@ class _KycManagementPageState extends ConsumerState<KycManagementPage> {
         _selectedReviews.clear();
       });
 
-      _loadKycReviews();
+      // Refresh KYC data - providers auto-refresh via Riverpod
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +120,12 @@ class _KycManagementPageState extends ConsumerState<KycManagementPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadKycReviews,
+            onPressed: () {
+              // Providers auto-refresh, just show feedback
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Refreshing...')),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.download),

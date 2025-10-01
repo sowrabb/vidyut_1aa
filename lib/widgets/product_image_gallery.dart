@@ -33,9 +33,8 @@ class _ProductImageGalleryState extends ConsumerState<ProductImageGallery> {
     // Analytics: gallery opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent(type: 'gallery.gallery_opened', entityType: 'product');
+      ref.read(analyticsServiceProvider).logEvent(
+            type: 'gallery.gallery_opened', entityType: 'product');
     });
   }
 
@@ -72,14 +71,12 @@ class _ProductImageGalleryState extends ConsumerState<ProductImageGallery> {
     if (next == _currentIndex) return;
     _pageController.animateToPage(next,
         duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-    ref
-        .read(analyticsServiceProvider)
+    ref.read(analyticsServiceProvider)
         .logEvent(type: 'gallery.arrow_nav', entityType: 'product');
   }
 
   void _openFullScreen() {
-    ref
-        .read(analyticsServiceProvider)
+    ref.read(analyticsServiceProvider)
         .logEvent(type: 'gallery.viewer_opened', entityType: 'product');
     Navigator.of(context).push(
       PageRouteBuilder(

@@ -1,0 +1,37 @@
+#!/bin/bash
+# Pre-commit hook for Vidyut project
+# Runs analyzer and basic checks before allowing commit
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Run Flutter analyzer
+echo "📊 Running flutter analyze..."
+if ! flutter analyze; then
+    echo "❌ Flutter analyze found issues. Please fix them before committing."
+    exit 1
+fi
+
+# Check for TODOs in committed files (warning only)
+echo "📝 Checking for TODOs..."
+git diff --cached --name-only | while read file; do
+    if [ -f "$file" ]; then
+        if grep -n "TODO" "$file" > /dev/null 2>&1; then
+            echo "⚠️  Warning: $file contains TODO comments"
+        fi
+    fi
+done
+
+# Check for debug prints
+echo "🐛 Checking for debug prints..."
+if git diff --cached | grep -E "^\+.*print\(|^\+.*debugPrint\(" > /dev/null 2>&1; then
+    echo "⚠️  Warning: Found print/debugPrint statements in staged changes"
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0
+
+
+
+
