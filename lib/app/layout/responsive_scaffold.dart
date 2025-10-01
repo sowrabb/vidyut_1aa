@@ -236,6 +236,7 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
     return AutoHideScaffold(
       backgroundColor: AppColors.surface,
       body: _getPage(index),
+      enableAutoHide: false, // Disable auto-hide animation for sticky nav bar
       bottomNavigationBar: SafeArea(
         child: NavigationBar(
           selectedIndex: selectedPos == -1 ? 0 : selectedPos,

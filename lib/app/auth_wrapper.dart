@@ -46,39 +46,10 @@ class MainApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: const ResponsiveScaffold(initialIndex: 0),
-      floatingActionButton: _buildProfileButton(context, ref),
+      // Removed floatingActionButton to eliminate overlap with navigation bar
     );
   }
 
-  Widget? _buildProfileButton(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(sessionControllerProvider);
-
-    String label = 'Profile';
-    IconData icon = Icons.person;
-    Color color = AppColors.primary;
-
-    if (session.isGuest) {
-      label = 'Guest User';
-      icon = Icons.person_outline;
-      color = Colors.orange;
-    } else if (session.isSeller) {
-      label = 'Seller Hub';
-      icon = Icons.store;
-      color = Colors.green;
-    } else if (session.canBecomeSeller) {
-      label = 'Become Seller';
-      icon = Icons.add_business;
-      color = Colors.blue;
-    }
-
-    return FloatingActionButton.extended(
-      onPressed: () => _showProfileDialog(context, ref),
-      backgroundColor: color,
-      foregroundColor: Colors.white,
-      icon: Icon(icon),
-      label: Text(label),
-    );
-  }
 
   void _showProfileDialog(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);

@@ -140,6 +140,7 @@ class AppShellScaffold extends StatelessWidget {
       backgroundColor: AppColors.surface,
       appBar: appBar,
       body: body,
+      enableAutoHide: false, // Disable auto-hide animation for sticky nav bar
       bottomNavigationBar: SafeArea(
         child: NavigationBar(
           selectedIndex: mobileSelectedIndex == -1 ? 0 : mobileSelectedIndex,
