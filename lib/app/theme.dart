@@ -81,13 +81,13 @@ ThemeData buildVidyutTheme() {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
-      shadowColor: AppColors.shadow,
-      elevation: AppElevation.level8,
-      indicatorColor: AppColors.primary.withOpacity(0.2),
+      shadowColor: Colors.black.withOpacity(0.15),
+      elevation: 12,
+      indicatorColor: AppColors.primary.withOpacity(0.4),
       indicatorShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
       ),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       height: 80,

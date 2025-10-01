@@ -84,23 +84,34 @@ class _ResponsiveScaffoldV2State extends ConsumerState<ResponsiveScaffoldV2> {
     return Scaffold(
       body: _getPage(_currentIndex),
       bottomNavigationBar: SafeArea(
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          destinations: _getNavigationDestinations(),
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.black.withOpacity(0.1),
-          elevation: 8,
-          indicatorColor: Colors.blue.withOpacity(0.2),
-          indicatorShape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: Offset(0, -5),
+              ),
+            ],
           ),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          child: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            destinations: _getNavigationDestinations(),
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            indicatorColor: Colors.blue.withOpacity(0.4),
+            indicatorShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          ),
         ),
       ),
     );

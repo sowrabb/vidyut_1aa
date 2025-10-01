@@ -238,19 +238,30 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
       body: _getPage(index),
       enableAutoHide: false, // Disable auto-hide animation for sticky nav bar
       bottomNavigationBar: SafeArea(
-        child: NavigationBar(
-          selectedIndex: selectedPos == -1 ? 0 : selectedPos,
-          onDestinationSelected: (i) => setState(() => index = indexMap[i]),
-          destinations: destinations,
-          backgroundColor: AppColors.surface,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: AppColors.shadow,
-          elevation: 8,
-          indicatorColor: AppColors.primary.withOpacity(0.2),
-          indicatorShape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: Offset(0, -5),
+              ),
+            ],
           ),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          child: NavigationBar(
+            selectedIndex: selectedPos == -1 ? 0 : selectedPos,
+            onDestinationSelected: (i) => setState(() => index = indexMap[i]),
+            destinations: destinations,
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            indicatorColor: AppColors.primary.withOpacity(0.4),
+            indicatorShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          ),
         ),
       ),
     );
