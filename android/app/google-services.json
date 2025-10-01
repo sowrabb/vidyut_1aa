@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "940313957771",
+    "project_id": "vidyutnidhi5",
+    "storage_bucket": "vidyutnidhi5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:940313957771:android:2b9f790bff58a4fe8a0b8e",
+        "android_client_info": {
+          "package_name": "com.vidyut.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6Lu3_M9dsnd69nNZiXAB_7OczcerYe34"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
