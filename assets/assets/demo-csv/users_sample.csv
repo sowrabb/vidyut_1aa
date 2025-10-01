@@ -1,0 +1,4 @@
+id,name,email,role,status,createdAt,plan,isSeller,legalName,gstin,address,materials
+U2001,Arjun Patel,arjun.patel@example.com,admin,active,2023-01-15T09:30:00.000Z,enterprise,false,,, ,
+U2002,Meera Rao,meera.rao@example.com,seller,active,2023-02-10T10:45:00.000Z,premium,true,Rao Industries,27AABCR1234M1Z5,"1 MG Road, Bengaluru",Copper;Aluminium
+U2003,Dev Sharma,dev.sharma@example.com,buyer,pending,2023-03-05T12:10:00.000Z,free,false,,, ,
