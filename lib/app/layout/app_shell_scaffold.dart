@@ -140,10 +140,12 @@ class AppShellScaffold extends StatelessWidget {
       backgroundColor: AppColors.surface,
       appBar: appBar,
       body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: mobileSelectedIndex == -1 ? 0 : mobileSelectedIndex,
-        onDestinationSelected: goToRoot,
-        destinations: destinations,
+      bottomNavigationBar: SafeArea(
+        child: NavigationBar(
+          selectedIndex: mobileSelectedIndex == -1 ? 0 : mobileSelectedIndex,
+          onDestinationSelected: goToRoot,
+          destinations: destinations,
+        ),
       ),
     );
   }

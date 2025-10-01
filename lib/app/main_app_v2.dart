@@ -6,16 +6,12 @@ import '../features/messaging/messaging_page_v2.dart';
 import '../features/profile/user_profile_page.dart';
 import '../features/admin/admin_dashboard_v2.dart';
 import '../../../app/provider_registry.dart';
-import '../app/tokens.dart';
 
 class MainAppV2 extends ConsumerWidget {
   const MainAppV2({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(sessionControllerProvider);
-    final rbac = ref.watch(rbacProvider);
-    
     return Scaffold(
       body: ResponsiveScaffoldV2(
         initialIndex: 0,
@@ -44,9 +40,6 @@ class _ResponsiveScaffoldV2State extends ConsumerState<ResponsiveScaffoldV2> {
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(sessionControllerProvider);
-    final rbac = ref.watch(rbacProvider);
-    
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 768;
@@ -90,14 +83,16 @@ class _ResponsiveScaffoldV2State extends ConsumerState<ResponsiveScaffoldV2> {
   Widget _buildMobileLayout() {
     return Scaffold(
       body: _getPage(_currentIndex),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: _getNavigationDestinations(),
+      bottomNavigationBar: SafeArea(
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          destinations: _getNavigationDestinations(),
+        ),
       ),
     );
   }

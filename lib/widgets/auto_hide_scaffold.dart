@@ -197,16 +197,21 @@ class _AutoHideScaffoldState extends State<AutoHideScaffold>
                 child: AnimatedBuilder(
                   animation: _bottomNavAnimation,
                   builder: (context, child) {
+                    // Get proper bottom navigation bar height including safe area
+                    final bottomPadding = MediaQuery.of(context).padding.bottom;
+                    final navBarHeight = 80.0 + bottomPadding; // Standard nav bar + safe area
+                    
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
-                      height: _isBottomNavVisible
-                          ? 80
-                          : 0, // Approximate bottom nav height
+                      height: _isBottomNavVisible ? navBarHeight : 0,
                       child: ClipRect(
                         child: Transform.translate(
-                          offset: Offset(0, _bottomNavAnimation.value * 80),
-                          child: widget.bottomNavigationBar!,
+                          offset: Offset(0, _bottomNavAnimation.value * navBarHeight),
+                          child: SafeArea(
+                            top: false,
+                            child: widget.bottomNavigationBar!,
+                          ),
                         ),
                       ),
                     );
