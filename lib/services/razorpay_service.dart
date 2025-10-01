@@ -7,8 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../features/auth/models/user_role_models.dart';
-import 'dart:js' as js;
-import 'dart:html' as html;
+
+// Conditional import for web-specific functionality
+import 'razorpay_service_stub.dart'
+    if (dart.library.html) 'razorpay_service_web.dart';
 
 /// Razorpay configuration
 class RazorpayConfig {
@@ -253,8 +255,14 @@ class RazorpayService {
         debugPrint('🔵 Amount: $amount, Currency: $currency');
         debugPrint('🔵 Order ID: $orderId');
         
-        // Create Razorpay options object with JS interop
-        final razorpayOptionsMap = {
+        // Check if Razorpay is loaded
+        if (!isRazorpayAvailable()) {
+          debugPrint('❌ Razorpay script not loaded!');
+          return PaymentResult(success: false, error: 'Razorpay script not loaded. Please refresh the page.');
+        }
+        
+        // Create Razorpay options
+        final razorpayOptions = {
           'key': RazorpayConfig.keyId,
           'amount': amount,
           'currency': currency,
@@ -273,58 +281,46 @@ class RazorpayService {
           },
         };
         
-        // Add handlers after creating the map
-        razorpayOptionsMap['handler'] = js.allowInterop((response) {
-          debugPrint('✅ Payment Success: ${response.toString()}');
-          final paymentId = response['razorpay_payment_id'] as String?;
-          final responseOrderId = response['razorpay_order_id'] as String?;
-          final signature = response['razorpay_signature'] as String?;
-          
-          final result = PaymentResult(
-            success: true,
-            paymentId: paymentId,
-            orderId: responseOrderId ?? orderId,
-            signature: signature,
-            data: {
+        // Open checkout with web-specific implementation
+        openRazorpayCheckoutWeb(
+          options: razorpayOptions,
+          onSuccess: (response) {
+            debugPrint('✅ Payment Success: ${response.toString()}');
+            final paymentId = response['razorpay_payment_id'] as String?;
+            final responseOrderId = response['razorpay_order_id'] as String?;
+            final signature = response['razorpay_signature'] as String?;
+            
+            final result = PaymentResult(
+              success: true,
+              paymentId: paymentId,
+              orderId: responseOrderId ?? orderId,
+              signature: signature,
+              data: {
+                'payment_id': paymentId,
+                'order_id': responseOrderId ?? orderId,
+                'signature': signature,
+              },
+            );
+            
+            // Update Firestore with our local order ID
+            _firestore.collection('payment_orders').doc(orderId).update({
+              'status': 'success',
               'payment_id': paymentId,
-              'order_id': responseOrderId ?? orderId,
+              'razorpay_order_id': responseOrderId,
               'signature': signature,
-            },
-          );
-          
-          // Update Firestore with our local order ID
-          _firestore.collection('payment_orders').doc(orderId).update({
-            'status': 'success',
-            'payment_id': paymentId,
-            'razorpay_order_id': responseOrderId,
-            'signature': signature,
-            'completed_at': FieldValue.serverTimestamp(),
-          });
-          
-          _onPaymentSuccess?.call(result);
-        });
-        
-        razorpayOptionsMap['modal'] = {
-          'ondismiss': js.allowInterop(() {
+              'completed_at': FieldValue.serverTimestamp(),
+            });
+            
+            _onPaymentSuccess?.call(result);
+          },
+          onDismiss: () {
             debugPrint('❌ Payment dismissed by user');
             _onPaymentFailure?.call(PaymentResult(
               success: false,
               error: 'Payment cancelled by user',
             ));
-          })
-        };
-        
-        final razorpayOptions = js.JsObject.jsify(razorpayOptionsMap);
-        
-        // Check if Razorpay is loaded
-        if (js.context['Razorpay'] == null) {
-          debugPrint('❌ Razorpay script not loaded!');
-          return PaymentResult(success: false, error: 'Razorpay script not loaded. Please refresh the page.');
-        }
-        
-        // Create and open Razorpay instance
-        final razorpayInstance = js.JsObject(js.context['Razorpay'], [razorpayOptions]);
-        razorpayInstance.callMethod('open');
+          },
+        );
         
         debugPrint('🔵 Razorpay modal opened successfully');
         return PaymentResult(success: false, error: 'Payment in progress');
