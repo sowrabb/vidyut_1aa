@@ -236,10 +236,12 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
     return AutoHideScaffold(
       backgroundColor: AppColors.surface,
       body: _getPage(index),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedPos == -1 ? 0 : selectedPos,
-        onDestinationSelected: (i) => setState(() => index = indexMap[i]),
-        destinations: destinations,
+      bottomNavigationBar: SafeArea(
+        child: NavigationBar(
+          selectedIndex: selectedPos == -1 ? 0 : selectedPos,
+          onDestinationSelected: (i) => setState(() => index = indexMap[i]),
+          destinations: destinations,
+        ),
       ),
     );
   }

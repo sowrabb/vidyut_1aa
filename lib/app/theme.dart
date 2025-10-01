@@ -80,5 +80,17 @@ ThemeData buildVidyutTheme() {
         ),
       ),
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: AppColors.shadow,
+      elevation: AppElevation.level8,
+      indicatorColor: AppColors.primary.withOpacity(0.1),
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      height: 80,
+    ),
   );
 }
