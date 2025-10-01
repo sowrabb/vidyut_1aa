@@ -85,9 +85,9 @@ ThemeData buildVidyutTheme() {
       surfaceTintColor: Colors.transparent,
       shadowColor: AppColors.shadow,
       elevation: AppElevation.level8,
-      indicatorColor: AppColors.primary.withOpacity(0.1),
+      indicatorColor: AppColors.primary.withOpacity(0.2),
       indicatorShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       height: 80,

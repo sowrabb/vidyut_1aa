@@ -242,6 +242,15 @@ class _ResponsiveScaffoldState extends ConsumerState<ResponsiveScaffold> {
           selectedIndex: selectedPos == -1 ? 0 : selectedPos,
           onDestinationSelected: (i) => setState(() => index = indexMap[i]),
           destinations: destinations,
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: AppColors.shadow,
+          elevation: 8,
+          indicatorColor: AppColors.primary.withOpacity(0.2),
+          indicatorShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         ),
       ),
     );

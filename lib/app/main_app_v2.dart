@@ -92,6 +92,15 @@ class _ResponsiveScaffoldV2State extends ConsumerState<ResponsiveScaffoldV2> {
             });
           },
           destinations: _getNavigationDestinations(),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.black.withOpacity(0.1),
+          elevation: 8,
+          indicatorColor: Colors.blue.withOpacity(0.2),
+          indicatorShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         ),
       ),
     );

@@ -146,6 +146,15 @@ class AppShellScaffold extends StatelessWidget {
           selectedIndex: mobileSelectedIndex == -1 ? 0 : mobileSelectedIndex,
           onDestinationSelected: goToRoot,
           destinations: destinations,
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: AppColors.shadow,
+          elevation: 8,
+          indicatorColor: AppColors.primary.withOpacity(0.2),
+          indicatorShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         ),
       ),
     );
